@@ -17,17 +17,23 @@
 package com.example.bouncedemo;
 
 import android.Manifest;
+import android.app.PendingIntent;
+import android.content.BroadcastReceiver;
+import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.net.Uri;
 import android.os.Bundle;
 import android.preference.PreferenceManager;
 import android.provider.Settings;
+import android.text.TextUtils;
 import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
@@ -36,11 +42,25 @@ import androidx.core.app.ActivityCompat;
 import com.airbnb.lottie.LottieAnimationView;
 import com.bounce.location.LocationUpdateService;
 import com.bounce.location.LocationUtils;
+import com.example.bouncedemo.Logs.LogFragment;
 import com.facebook.stetho.Stetho;
+import com.google.android.gms.location.ActivityRecognition;
+import com.google.android.gms.location.ActivityTransition;
+import com.google.android.gms.location.ActivityTransitionEvent;
+import com.google.android.gms.location.ActivityTransitionRequest;
+import com.google.android.gms.location.ActivityTransitionResult;
+import com.google.android.gms.location.DetectedActivity;
+import com.google.android.gms.tasks.OnFailureListener;
+import com.google.android.gms.tasks.OnSuccessListener;
+import com.google.android.gms.tasks.Task;
 import com.google.android.material.snackbar.Snackbar;
 
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Calendar;
+import java.util.Date;
+import java.util.List;
+import java.util.Locale;
 
 /**
  * The only activity in this sample.
@@ -85,6 +105,17 @@ public class MainActivity extends AppCompatActivity implements
     private static final int REQUEST_PERMISSIONS_REQUEST_CODE = 34;
     private static final String TRANSITIONS_RECEIVER_ACTION ="my_action" ;
 
+
+    //transition
+    // Intents action that will be fired when transitions are triggered
+    private final String TRANSITION_ACTION_RECEIVER =
+            BuildConfig.APPLICATION_ID +".TRANSITION_ACTION_RECEIVER";
+
+    private LogFragment mLogFragment;
+
+    private PendingIntent mPendingIntent;
+    private myTransitionReceiver mTransitionsReceiver;
+
     // The BroadcastReceiver used to listen from broadcasts from the service.
     //private MyReceiver myReceiver;
 
@@ -100,6 +131,8 @@ public class MainActivity extends AppCompatActivity implements
     LottieAnimationView animationView;
     private TextView mLocationInfo;
 
+
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -114,6 +147,13 @@ public class MainActivity extends AppCompatActivity implements
         animationView = findViewById(R.id.animation_view);
         mLocationInfo=findViewById(R.id.tv_location);
 
+        //transition
+        Intent intent = new Intent(TRANSITION_ACTION_RECEIVER);
+        mPendingIntent = PendingIntent.getBroadcast(MainActivity.this, 0, intent, 0);
+
+        mTransitionsReceiver = new myTransitionReceiver();
+        registerReceiver(mTransitionsReceiver, new IntentFilter(TRANSITION_ACTION_RECEIVER));
+
         //stetho
         Stetho.initializeWithDefaults(this);
 
@@ -124,12 +164,10 @@ public class MainActivity extends AppCompatActivity implements
             }
         }
 
+        mLogFragment = (LogFragment) getSupportFragmentManager().findFragmentById(R.id.log_fragment);
+
     }
-    @Override
-    protected void onPause() {
-        /*LocalBroadcastManager.getInstance(this).unregisterReceiver(myReceiver);*/
-        super.onPause();
-    }
+
     @Override
     protected void onDestroy() {
         super.onDestroy();
@@ -182,7 +220,7 @@ public class MainActivity extends AppCompatActivity implements
     @Override
     protected void onResume() {
         super.onResume();
-
+        setUpTransitions();
         setButtonsState(LocationUtils.requestingLocationUpdates(this));
         /*if(!LocationUtils.getStoppingFlag(this)){
 
@@ -196,12 +234,7 @@ public class MainActivity extends AppCompatActivity implements
                 new IntentFilter(LocationUpdateService.ACTION_BROADCAST));*/
     }
 
-    @Override
-    protected void onStop() {
-        PreferenceManager.getDefaultSharedPreferences(this)
-                .unregisterOnSharedPreferenceChangeListener(this);
-        super.onStop();
-    }
+
 
     /**
      * Returns the current state of the permissions needed.
@@ -312,6 +345,135 @@ public class MainActivity extends AppCompatActivity implements
     }
 
 
+
+
+    //transition api
+
+    @Override
+    protected void onPause() {
+        // Unregister the transitions:
+        ActivityRecognition.getClient(this).removeActivityTransitionUpdates(mPendingIntent)
+                .addOnSuccessListener(new OnSuccessListener<Void>() {
+                    @Override
+                    public void onSuccess(Void aVoid) {
+                        Log.i(TAG, "Transitions successfully unregistered.");
+                    }
+                })
+                .addOnFailureListener(new OnFailureListener() {
+                    @Override
+                    public void onFailure(@NonNull Exception e) {
+                        Log.e(TAG, "Transitions could not be unregistered: " + e);
+                    }
+                });
+
+        super.onPause();
+    }
+
+    @Override
+    protected void onStop() {
+
+        PreferenceManager.getDefaultSharedPreferences(this)
+                .unregisterOnSharedPreferenceChangeListener(this);
+        super.onStop();
+    }
+
+    private void setUpTransitions(){
+        List<ActivityTransition> transitions = new ArrayList<>();
+
+        transitions.add(
+                new ActivityTransition.Builder()
+                        .setActivityType(DetectedActivity.WALKING)
+                        .setActivityTransition(ActivityTransition.ACTIVITY_TRANSITION_ENTER)
+                        .build());
+
+        transitions.add(
+                new ActivityTransition.Builder()
+                        .setActivityType(DetectedActivity.WALKING)
+                        .setActivityTransition(ActivityTransition.ACTIVITY_TRANSITION_EXIT)
+                        .build());
+
+        transitions.add(
+                new ActivityTransition.Builder()
+                        .setActivityType(DetectedActivity.STILL)
+                        .setActivityTransition(ActivityTransition.ACTIVITY_TRANSITION_ENTER)
+                        .build());
+
+        transitions.add(
+                new ActivityTransition.Builder()
+                        .setActivityType(DetectedActivity.STILL)
+                        .setActivityTransition(ActivityTransition.ACTIVITY_TRANSITION_EXIT)
+                        .build());
+
+        ActivityTransitionRequest request = new ActivityTransitionRequest(transitions);
+
+        // Register for Transitions Updates.
+        Task<Void> task =
+                ActivityRecognition.getClient(this)
+                        .requestActivityTransitionUpdates(request, mPendingIntent);
+        task.addOnSuccessListener(
+                new OnSuccessListener<Void>() {
+                    @Override
+                    public void onSuccess(Void result) {
+                        Log.i(TAG, "Transitions Api was successfully registered.");
+
+                        mLocationInfo.setText("Transitions Api was successfully registered.");
+                    }
+                });
+        task.addOnFailureListener(
+                new OnFailureListener() {
+                    @Override
+                    public void onFailure(Exception e) {
+                        Log.e(TAG, "Transitions Api could not be registered: " + e);
+                    }
+                });
+    }
+
+    public class myTransitionReceiver extends BroadcastReceiver {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            if (!TextUtils.equals(TRANSITION_ACTION_RECEIVER, intent.getAction())){
+                Toast.makeText(context, "Unsupported action received in myTransitionReceiver ", Toast.LENGTH_SHORT).show();
+
+                return;
+            }
+
+            if (ActivityTransitionResult.hasResult(intent)){
+                ActivityTransitionResult result = ActivityTransitionResult.extractResult(intent);
+                for (ActivityTransitionEvent event : result.getTransitionEvents()){
+                    String theActivity = toActivityString(event.getActivityType());
+                    String transType = toTransitionType(event.getTransitionType());
+                    mLogFragment.getLogView()
+                            .echo("Transition: "
+                                    + theActivity + " (" + transType + ")" + "   "
+                                    + new SimpleDateFormat("HH:mm:ss", Locale.UK)
+                                    .format(new Date()));
+
+                }
+            }
+        }
+    }
+
+    private static String toActivityString(int activity) {
+        switch (activity) {
+            case DetectedActivity.STILL:
+                return "STILL";
+            case DetectedActivity.WALKING:
+                return "WALKING";
+            default:
+                return "UNKNOWN";
+        }
+    }
+
+    private static String toTransitionType(int transitionType) {
+        switch (transitionType) {
+            case ActivityTransition.ACTIVITY_TRANSITION_ENTER:
+                return "ENTER";
+            case ActivityTransition.ACTIVITY_TRANSITION_EXIT:
+                return "EXIT";
+            default:
+                return "UNKNOWN";
+        }
+    }
 
     /**
      * Receiver for broadcasts sent by {@link LocationUpdateService}.

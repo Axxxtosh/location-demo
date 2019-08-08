@@ -45,7 +45,7 @@
         android:id="@+id/tv_location"
         android:layout_width="match_parent"
         android:padding="16dp"
-        android:visibility="gone"
+
         android:layout_height="wrap_content" />
 
     <Button
@@ -54,4 +54,12 @@
         android:layout_height="wrap_content"
         android:layout_above="@id/request_location_updates_button"
         android:text="@string/remove_location_updates" />
+
+    <fragment
+        android:name="com.example.bouncedemo.Logs.LogFragment"
+        android:id="@+id/log_fragment"
+        android:layout_below="@id/tv_location"
+        android:layout_weight="1"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent" />
 </RelativeLayout>
