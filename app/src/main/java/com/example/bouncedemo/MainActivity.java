@@ -125,7 +125,6 @@ public class MainActivity extends AppCompatActivity implements
         }
 
     }
-
     @Override
     protected void onPause() {
         /*LocalBroadcastManager.getInstance(this).unregisterReceiver(myReceiver);*/
@@ -196,7 +195,6 @@ public class MainActivity extends AppCompatActivity implements
         /*LocalBroadcastManager.getInstance(this).registerReceiver(myReceiver,
                 new IntentFilter(LocationUpdateService.ACTION_BROADCAST));*/
     }
-
 
     @Override
     protected void onStop() {
@@ -292,6 +290,29 @@ public class MainActivity extends AppCompatActivity implements
         }
     }
 
+    @Override
+    public void onSharedPreferenceChanged(SharedPreferences sharedPreferences, String s) {
+        // Update the buttons state depending on whether location updates are being requested.
+        if (s.equals(LocationUtils.KEY_REQUESTING_LOCATION_UPDATES)) {
+            setButtonsState(sharedPreferences.getBoolean(LocationUtils.KEY_REQUESTING_LOCATION_UPDATES,
+                    false));
+        }
+    }
+
+    private void setButtonsState(boolean requestingLocationUpdates) {
+        if (requestingLocationUpdates) {
+            mRequestLocationUpdatesButton.setEnabled(false);
+            mRequestLocationUpdatesButton.setAlpha(.5f);
+            mRemoveLocationUpdatesButton.setEnabled(true);
+        } else {
+            mRequestLocationUpdatesButton.setEnabled(true);
+            mRequestLocationUpdatesButton.setAlpha(1);
+            mRemoveLocationUpdatesButton.setEnabled(false);
+        }
+    }
+
+
+
     /**
      * Receiver for broadcasts sent by {@link LocationUpdateService}.
      */
@@ -321,29 +342,5 @@ public class MainActivity extends AppCompatActivity implements
             }
         }
     }*/
-
-    @Override
-    public void onSharedPreferenceChanged(SharedPreferences sharedPreferences, String s) {
-        // Update the buttons state depending on whether location updates are being requested.
-        if (s.equals(LocationUtils.KEY_REQUESTING_LOCATION_UPDATES)) {
-            setButtonsState(sharedPreferences.getBoolean(LocationUtils.KEY_REQUESTING_LOCATION_UPDATES,
-                    false));
-        }
-    }
-
-    private void setButtonsState(boolean requestingLocationUpdates) {
-        if (requestingLocationUpdates) {
-            mRequestLocationUpdatesButton.setEnabled(false);
-            mRequestLocationUpdatesButton.setAlpha(.5f);
-            mRemoveLocationUpdatesButton.setEnabled(true);
-        } else {
-            mRequestLocationUpdatesButton.setEnabled(true);
-            mRequestLocationUpdatesButton.setAlpha(1);
-            mRemoveLocationUpdatesButton.setEnabled(false);
-        }
-    }
-
-
-
 
 }
