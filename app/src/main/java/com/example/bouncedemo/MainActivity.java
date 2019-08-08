@@ -17,18 +17,11 @@
 package com.example.bouncedemo;
 
 import android.Manifest;
-import android.content.BroadcastReceiver;
-import android.content.ComponentName;
-import android.content.Context;
 import android.content.Intent;
-import android.content.IntentFilter;
-import android.content.ServiceConnection;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
-import android.location.Location;
 import android.net.Uri;
 import android.os.Bundle;
-import android.os.IBinder;
 import android.preference.PreferenceManager;
 import android.provider.Settings;
 import android.util.Log;
@@ -39,7 +32,6 @@ import android.widget.TextView;
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
-import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 
 import com.airbnb.lottie.LottieAnimationView;
 import com.bounce.location.LocationUpdateService;
@@ -91,13 +83,13 @@ public class MainActivity extends AppCompatActivity implements
     private static final String TRANSITIONS_RECEIVER_ACTION ="my_action" ;
 
     // The BroadcastReceiver used to listen from broadcasts from the service.
-    private MyReceiver myReceiver;
+    //private MyReceiver myReceiver;
 
     // A reference to the service used to get location updates.
     
 
     // Tracks the bound state of the service.
-    private boolean mBound = false;
+
 
     // UI elements.
     private Button mRequestLocationUpdatesButton;
@@ -105,40 +97,17 @@ public class MainActivity extends AppCompatActivity implements
     LottieAnimationView animationView;
     private TextView mLocationInfo;
 
-
-
-    // Monitors the state of the connection to the service.
-    private final ServiceConnection mServiceConnection = new ServiceConnection() {
-
-        @Override
-        public void onServiceConnected(ComponentName name, IBinder service) {
-            LocationUpdateService.LocalBinder binder = (LocationUpdateService.LocalBinder) service;
-            mService = binder.getService();
-            mBound = true;
-        }
-
-        @Override
-        public void onServiceDisconnected(ComponentName name) {
-            mService = null;
-            mBound = false;
-        }
-    };
-    private LocationUpdateService mService;
-
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        myReceiver = new MyReceiver();
+        //myReceiver = new MyReceiver();
         setContentView(R.layout.activity_main);
 
         animationView = findViewById(R.id.animation_view);
         mLocationInfo=findViewById(R.id.tv_location);
 
-
-
         //stetho
         Stetho.initializeWithDefaults(this);
-
 
         // Check that the user hasn't revoked permissions by going to Settings.
         if (LocationUtils.requestingLocationUpdates(this)) {
@@ -151,8 +120,7 @@ public class MainActivity extends AppCompatActivity implements
 
     @Override
     protected void onPause() {
-
-        LocalBroadcastManager.getInstance(this).unregisterReceiver(myReceiver);
+        /*LocalBroadcastManager.getInstance(this).unregisterReceiver(myReceiver);*/
         super.onPause();
     }
     @Override
@@ -178,7 +146,7 @@ public class MainActivity extends AppCompatActivity implements
 
                mLocationInfo.setText("Fetching LocationInfo Updates...");
 
-
+                setButtonsState(true);
                 if (!checkPermissions()) {
                     requestPermissions();
                 } else {
@@ -186,7 +154,7 @@ public class MainActivity extends AppCompatActivity implements
                     animationView.setVisibility(View.VISIBLE);
 
                     //pass the activity context on which you want to observe the location
-                    LocationUtils.setRequestingLocationUpdates(MainActivity.this, true);
+
                     startService(new Intent(getApplicationContext(), LocationUpdateService.class));
                 }
             }
@@ -195,7 +163,9 @@ public class MainActivity extends AppCompatActivity implements
         mRemoveLocationUpdatesButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                LocationUtils.setRequestingLocationUpdates(MainActivity.this, false);
+
+                animationView.setVisibility(View.GONE);
+                setButtonsState(false);
                 stopService(new Intent(getApplicationContext(), LocationUpdateService.class));
             }
         });
@@ -210,28 +180,22 @@ public class MainActivity extends AppCompatActivity implements
     protected void onResume() {
         super.onResume();
 
-        if(LocationUtils.getStoppingFlag(this)){
+        setButtonsState(LocationUtils.requestingLocationUpdates(this));
+        /*if(!LocationUtils.getStoppingFlag(this)){
 
             LocationUtils.setRequestingLocationUpdates(MainActivity.this, false);
             stopService(new Intent(getApplicationContext(), LocationUpdateService.class));
             mLocationInfo.setText("Stopped");
             animationView.setVisibility(View.GONE);
             LocationUtils.setStopingLocationUpdate(this,false);
-        }
-        LocalBroadcastManager.getInstance(this).registerReceiver(myReceiver,
-                new IntentFilter(LocationUpdateService.ACTION_BROADCAST));
+        }*/
+        /*LocalBroadcastManager.getInstance(this).registerReceiver(myReceiver,
+                new IntentFilter(LocationUpdateService.ACTION_BROADCAST));*/
     }
 
 
     @Override
     protected void onStop() {
-        if (mBound) {
-            // Unbind from the service. This signals to the service that this activity is no longer
-            // in the foreground, and the service can respond by promoting itself to a foreground
-            // service.
-            unbindService(mServiceConnection);
-            mBound = false;
-        }
         PreferenceManager.getDefaultSharedPreferences(this)
                 .unregisterOnSharedPreferenceChangeListener(this);
         super.onStop();
@@ -326,7 +290,7 @@ public class MainActivity extends AppCompatActivity implements
     /**
      * Receiver for broadcasts sent by {@link LocationUpdateService}.
      */
-    private class MyReceiver extends BroadcastReceiver {
+    /*private class MyReceiver extends BroadcastReceiver {
         @Override
         public void onReceive(Context context, Intent intent) {
             if (intent.getIntExtra("from", 0) == 1234){
@@ -343,15 +307,15 @@ public class MainActivity extends AppCompatActivity implements
 
                 Location location = intent.getParcelableExtra(LocationUpdateService.EXTRA_LOCATION);
                 if (location != null) {
-                /*Toast.makeText(MainActivity.this, LocationUtils.getLocationText(location),
-                        Toast.LENGTH_SHORT).show();*/
+                *//*Toast.makeText(MainActivity.this, LocationUtils.getLocationText(location),
+                        Toast.LENGTH_SHORT).show();*//*
 
 
                     mLocationInfo.setText("Current LocationInfo : " + LocationUtils.getLocationText(location));
                 }
             }
         }
-    }
+    }*/
 
     @Override
     public void onSharedPreferenceChanged(SharedPreferences sharedPreferences, String s) {

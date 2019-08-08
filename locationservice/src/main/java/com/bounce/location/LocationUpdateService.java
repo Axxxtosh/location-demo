@@ -30,7 +30,6 @@ import android.location.Location;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
 import android.os.AsyncTask;
-import android.os.Binder;
 import android.os.Build;
 import android.os.Handler;
 import android.os.HandlerThread;
@@ -40,8 +39,6 @@ import android.util.Log;
 
 import androidx.annotation.NonNull;
 import androidx.core.app.NotificationCompat;
-import androidx.localbroadcastmanager.content.LocalBroadcastManager;
-import androidx.room.Room;
 
 import com.bounce.location.remote.Example;
 import com.bounce.location.remote.GetDataService;
@@ -95,7 +92,7 @@ public class LocationUpdateService extends Service {
     private static final String EXTRA_STARTED_FROM_NOTIFICATION = PACKAGE_NAME +
             ".started_from_notification";
 
-    private final IBinder mBinder = new LocalBinder();
+
 
     /**
      * The desired interval for location updates. Inexact. Updates may be more or less frequent.
@@ -139,9 +136,6 @@ public class LocationUpdateService extends Service {
     private LocationCallback mLocationCallback;
 
     private Handler mServiceHandler;
-
-    String diff="";
-
     /**
      * The current location.
      */
@@ -149,7 +143,7 @@ public class LocationUpdateService extends Service {
 
     private LocationDatabase locationDatabase;
 
-    private Context context;
+
 
     public LocationUpdateService() {
     }
@@ -162,36 +156,10 @@ public class LocationUpdateService extends Service {
             @Override
             public void onLocationResult(LocationResult locationResult) {
                 super.onLocationResult(locationResult);
-
                 //may be a batch
                 onNewLocation(locationResult.getLastLocation());
                 Log.e(TAG,"Batch size: "+locationResult.getLocations().size());
-
-
-
-               /* if(isNetworkAvailable(getApplicationContext())){
-
-                    Log.e(TAG,"checking connection : available ");
-
-                    //upload data from cache if available and clear the cache
-                    LocationInfo locationInfo=new LocationInfo();
-
-                    locationInfo.setLatitude(locationResult.getLastLocation().getLatitude());
-                    locationInfo.setLongitude(locationResult.getLastLocation().getLongitude());
-                    locationInfo.setAccuracy(locationResult.getLastLocation().getAccuracy());
-
-                    List<LocationInfo> locationInfos=new ArrayList<>();
-
-                    locationInfos.add(locationInfo);
-
-
-                    callApi(locationInfos);
-                }
-                else{
-
-                    Log.e(TAG,"checking connection : not available ");
-                    cacheData(locationResult);
-                }*/
+                //checkNetworkforApi();
 
             }
 
@@ -218,12 +186,37 @@ public class LocationUpdateService extends Service {
             mNotificationManager.createNotificationChannel(mChannel);
         }
 
-        locationDatabase= Room.databaseBuilder(getApplicationContext(), LocationDatabase.class, "LOCATION").build();
-
-
+        //locationDatabase= Room.databaseBuilder(getApplicationContext(), LocationDatabase.class, "LOCATION").build();
         requestLocationUpdates();
 
 
+    }
+
+    private void checkNetworkforApi() {
+
+               /* if(isNetworkAvailable(getApplicationContext())){
+
+                    Log.e(TAG,"checking connection : available ");
+
+                    //upload data from cache if available and clear the cache
+                    LocationInfo locationInfo=new LocationInfo();
+
+                    locationInfo.setLatitude(locationResult.getLastLocation().getLatitude());
+                    locationInfo.setLongitude(locationResult.getLastLocation().getLongitude());
+                    locationInfo.setAccuracy(locationResult.getLastLocation().getAccuracy());
+
+                    List<LocationInfo> locationInfos=new ArrayList<>();
+
+                    locationInfos.add(locationInfo);
+
+
+                    callApi(locationInfos);
+                }
+                else{
+
+                    Log.e(TAG,"checking connection : not available ");
+                    cacheData(locationResult);
+                }*/
     }
 
 
@@ -272,7 +265,7 @@ public class LocationUpdateService extends Service {
 
 
         // Tells the system to not try to recreate the service after it has been killed.
-        return START_STICKY;
+        return START_NOT_STICKY;
     }
 
     @Override
@@ -283,45 +276,12 @@ public class LocationUpdateService extends Service {
 
     @Override
     public IBinder onBind(Intent intent) {
-        // Called when a client (MainActivity in case of this sample) comes to the foreground
-        // and binds with this service. The service should cease to be a foreground service
-        // when that happens.
-        Log.e(TAG, "in onBind()");
-        stopForeground(true);
-        mChangingConfiguration = false;
-        return mBinder;
-    }
-
-    @Override
-    public void onRebind(Intent intent) {
-        // Called when a client (MainActivity in case of this sample) returns to the foreground
-        // and binds once again with this service. The service should cease to be a foreground
-        // service when that happens.
-        Log.e(TAG, "in onRebind()");
-        stopForeground(true);
-        mChangingConfiguration = false;
-        super.onRebind(intent);
-    }
-
-    @Override
-    public boolean onUnbind(Intent intent) {
-        Log.e(TAG, "Last client unbound from service");
-
-        // Called when the last client (MainActivity in case of this sample) unbinds from this
-        // service. If this method is called due to a configuration change in MainActivity, we
-        // do nothing. Otherwise, we make this service a foreground service.
-       /* if (!mChangingConfiguration && LocationUtils.requestingLocationUpdates(this)) {
-            Log.e(TAG, "Starting foreground service");
-
-        }*/
-        return true; // Ensures onRebind() is called when a client re-binds.
+        return null;
     }
 
     @Override
     public void onDestroy() {
-
         //to remove all callbacks
-        mServiceHandler.removeCallbacksAndMessages(null);
         //removeCache();
         Log.e(TAG, "In onDestroyed");
     }
@@ -334,7 +294,7 @@ public class LocationUpdateService extends Service {
     @SuppressLint("MissingPermission")
     public void requestLocationUpdates() {
 
-
+        LocationUtils.setRequestingLocationUpdates(this, true);
         Log.e(TAG, "Requesting location updates");
 
         try {
@@ -352,9 +312,12 @@ public class LocationUpdateService extends Service {
      */
     public void removeLocationUpdates() {
         Log.e(TAG, "Removing location updates");
-        try {
-            mFusedLocationClient.removeLocationUpdates(mLocationCallback);
 
+        LocationUtils.setRequestingLocationUpdates(this, false);
+        try {
+            mServiceHandler.removeCallbacksAndMessages(null);
+            mFusedLocationClient.removeLocationUpdates(mLocationCallback);
+            stopSelf();
         } catch (SecurityException unlikely) {
             LocationUtils.setRequestingLocationUpdates(this, true);
             Log.e(TAG, "Lost location permission. Could not remove updates. " + unlikely);
@@ -424,15 +387,14 @@ public class LocationUpdateService extends Service {
         //calculateDiff();
 
         // Notify anyone listening for broadcasts about the new location.
-        Intent intent = new Intent(ACTION_BROADCAST);
+       /* Intent intent = new Intent(ACTION_BROADCAST);
         intent.putExtra(EXTRA_LOCATION, location);
-        LocalBroadcastManager.getInstance(getApplicationContext()).sendBroadcast(intent);
+        LocalBroadcastManager.getInstance(getApplicationContext()).sendBroadcast(intent);*/
 
         //API call here
         // Update notification content if running as a foreground service.
-        if (serviceIsRunningInForeground(this)) {
-            mNotificationManager.notify(NOTIFICATION_ID, getNotification());
-        }
+        mNotificationManager.notify(NOTIFICATION_ID, getNotification());
+
     }
 
     /**
@@ -447,16 +409,6 @@ public class LocationUpdateService extends Service {
         mLocationRequest.setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY);
 
 
-    }
-
-    /**
-     * Class used for the client Binder.  Since this service runs in the same process as its
-     * clients, we don't need to deal with IPC.
-     */
-    public class LocalBinder extends Binder {
-        public LocationUpdateService getService() {
-            return LocationUpdateService.this;
-        }
     }
 
     /**
