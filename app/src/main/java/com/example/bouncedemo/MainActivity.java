@@ -146,28 +146,14 @@ public class MainActivity extends AppCompatActivity implements
             }
         }
 
-
-
-
     }
-
-
-
-
 
     @Override
     protected void onPause() {
 
         LocalBroadcastManager.getInstance(this).unregisterReceiver(myReceiver);
-
         super.onPause();
     }
-
-
-
-
-
-
     @Override
     protected void onDestroy() {
         super.onDestroy();

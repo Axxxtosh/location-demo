@@ -48,7 +48,6 @@ import com.bounce.location.remote.GetDataService;
 import com.bounce.location.remote.RetrofitClientInstance;
 import com.bounce.location.room.LocationDatabase;
 import com.bounce.location.room.LocationInfo;
-import com.google.android.gms.common.api.GoogleApiClient;
 import com.google.android.gms.location.FusedLocationProviderClient;
 import com.google.android.gms.location.LocationCallback;
 import com.google.android.gms.location.LocationRequest;
@@ -57,7 +56,6 @@ import com.google.android.gms.location.LocationServices;
 import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.Task;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
@@ -171,7 +169,7 @@ public class LocationUpdateService extends Service {
 
 
 
-                if(isNetworkAvailable(getApplicationContext())){
+               /* if(isNetworkAvailable(getApplicationContext())){
 
                     Log.e(TAG,"checking connection : available ");
 
@@ -193,7 +191,7 @@ public class LocationUpdateService extends Service {
 
                     Log.e(TAG,"checking connection : not available ");
                     cacheData(locationResult);
-                }
+                }*/
 
             }
 
@@ -257,16 +255,20 @@ public class LocationUpdateService extends Service {
         if (startedFromNotification) {
             removeLocationUpdates();
             stopSelf();
+        }else{
+
+
+            startForeground(NOTIFICATION_ID, getNotification());
         }
 
         //store timestamp for refresh time
 
-        if (mLocation != null)
+        /*if (mLocation != null)
         {LocationUtils.setTimestamp(context,mLocation.getTime());
 
-        diff=calculateDiff();}
+        diff=calculateDiff();}*/
 
-        startForeground(NOTIFICATION_ID, getNotification(context.getClass()));
+
 
         // Tells the system to not try to recreate the service after it has been killed.
         return START_STICKY;
@@ -316,23 +318,13 @@ public class LocationUpdateService extends Service {
 
     @Override
     public void onDestroy() {
+
+        //to remove all callbacks
         mServiceHandler.removeCallbacksAndMessages(null);
-        removeCache();
+        //removeCache();
         Log.e(TAG, "In onDestroyed");
     }
 
-    private void removeCache() {
-
-        Log.e(TAG, "service destroyed");
-
-        new AsyncTask<Void, Void, Void>() {
-            @Override
-            protected Void doInBackground(Void... voids) {
-                locationDatabase.clearAllTables();
-                return null;
-            }
-        }.execute();
-    }
 
     /**
      * Makes a request for location updates. Note that in this sample we merely log the
@@ -373,7 +365,7 @@ public class LocationUpdateService extends Service {
     /**
      * Returns the {@link NotificationCompat} used as part of the foreground service.
      */
-    private Notification getNotification(Class<?> otherActivityClass) {
+    private Notification getNotification() {
         Intent intent = new Intent(this, LocationUpdateService.class);
 
         CharSequence text = LocationUtils.getLocationText(mLocation);
@@ -385,13 +377,9 @@ public class LocationUpdateService extends Service {
         PendingIntent servicePendingIntent = PendingIntent.getService(this, 0, intent,
                 PendingIntent.FLAG_UPDATE_CURRENT);
 
-        // The PendingIntent to launch activity.
-        PendingIntent activityPendingIntent = PendingIntent.getActivity(this, 0,
-                new Intent(this, otherActivityClass), 0);
 
         NotificationCompat.Builder builder = new NotificationCompat.Builder(this)
-                .addAction(R.drawable.ic_launch, getString(R.string.launch_activity),
-                        activityPendingIntent)
+
                 .addAction(R.drawable.ic_cancel, getString(R.string.remove_location_updates),
                         servicePendingIntent)
                 .setContentText(text)
@@ -430,31 +418,11 @@ public class LocationUpdateService extends Service {
         }
     }
 
-    public boolean isNetworkAvailable(Context context) {
-        ConnectivityManager connectivityManager = ((ConnectivityManager) context.getSystemService(Context.CONNECTIVITY_SERVICE));
-        return connectivityManager.getActiveNetworkInfo() != null && connectivityManager.getActiveNetworkInfo().isConnected();
-    }
-
-    public static boolean isConnectedToNetwork(Context context) {
-        ConnectivityManager connectivityManager =
-                (ConnectivityManager) context.getSystemService(Context.CONNECTIVITY_SERVICE);
-
-        boolean isConnected = false;
-        if (connectivityManager != null) {
-            NetworkInfo activeNetwork = connectivityManager.getActiveNetworkInfo();
-            isConnected = (activeNetwork != null) && (activeNetwork.isConnectedOrConnecting());
-        }
-
-        return isConnected;
-    }
-
     private void onNewLocation(Location location) {
         Log.e(TAG, "New location: " + location);
 
         mLocation = location;
-
-
-        calculateDiff();
+        //calculateDiff();
 
         // Notify anyone listening for broadcasts about the new location.
         Intent intent = new Intent(ACTION_BROADCAST);
@@ -464,46 +432,8 @@ public class LocationUpdateService extends Service {
         //API call here
         // Update notification content if running as a foreground service.
         if (serviceIsRunningInForeground(this)) {
-            mNotificationManager.notify(NOTIFICATION_ID, getNotification(context.getClass()));
+            mNotificationManager.notify(NOTIFICATION_ID, getNotification());
         }
-    }
-
-    private String calculateDiff() {
-
-        long a,b;
-        a=LocationUtils.getTimeStamp(this);
-        if(mLocation!=null)
-        b=mLocation.getTime();
-        else
-        b=000;
-        long diff = b - a;
-
-        long diffInSec = TimeUnit.MILLISECONDS.toSeconds(diff);
-
-        return String.valueOf(diffInSec);
-    }
-
-    private void callApi(List<LocationInfo> loc) {
-        GetDataService service = RetrofitClientInstance.getRetrofitInstance().create(GetDataService.class);
-        Call<List<Example>> call=service.getAll(loc);
-
-        call.enqueue(new Callback<List<Example>>() {
-            @Override
-            public void onResponse(Call<List<Example>> call, Response<List<Example>> response) {
-
-                Log.e("API Call","success");
-
-
-
-            }
-
-            @Override
-            public void onFailure(Call<List<Example>> call, Throwable t) {
-
-                Log.e("API error",t.getMessage());
-
-            }
-        });
     }
 
     /**
@@ -515,11 +445,6 @@ public class LocationUpdateService extends Service {
         mLocationRequest.setMaxWaitTime(120000);
         mLocationRequest.setFastestInterval(30000);
         // mLocationRequest.setSmallestDisplacement(Constants.SMALLEST_DISTANCE);
-
-
-
-
-
         mLocationRequest.setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY);
 
 
@@ -558,5 +483,76 @@ public class LocationUpdateService extends Service {
     public void onTaskRemoved(Intent rootIntent) {
         super.onTaskRemoved(rootIntent);
         Log.e(TAG, "In onTaskRemoved");
+    }
+
+
+
+    private String calculateDiff() {
+
+        long a,b;
+        a=LocationUtils.getTimeStamp(this);
+        if(mLocation!=null)
+            b=mLocation.getTime();
+        else
+            b=000;
+        long diff = b - a;
+
+        long diffInSec = TimeUnit.MILLISECONDS.toSeconds(diff);
+
+        return String.valueOf(diffInSec);
+    }
+
+    private void callApi(List<LocationInfo> loc) {
+        GetDataService service = RetrofitClientInstance.getRetrofitInstance().create(GetDataService.class);
+        Call<List<Example>> call=service.getAll(loc);
+
+        call.enqueue(new Callback<List<Example>>() {
+            @Override
+            public void onResponse(Call<List<Example>> call, Response<List<Example>> response) {
+
+                Log.e("API Call","success");
+
+
+
+            }
+
+            @Override
+            public void onFailure(Call<List<Example>> call, Throwable t) {
+
+                Log.e("API error",t.getMessage());
+
+            }
+        });
+    }
+
+    public boolean isNetworkAvailable(Context context) {
+        ConnectivityManager connectivityManager = ((ConnectivityManager) context.getSystemService(Context.CONNECTIVITY_SERVICE));
+        return connectivityManager.getActiveNetworkInfo() != null && connectivityManager.getActiveNetworkInfo().isConnected();
+    }
+
+    public static boolean isConnectedToNetwork(Context context) {
+        ConnectivityManager connectivityManager =
+                (ConnectivityManager) context.getSystemService(Context.CONNECTIVITY_SERVICE);
+
+        boolean isConnected = false;
+        if (connectivityManager != null) {
+            NetworkInfo activeNetwork = connectivityManager.getActiveNetworkInfo();
+            isConnected = (activeNetwork != null) && (activeNetwork.isConnectedOrConnecting());
+        }
+
+        return isConnected;
+    }
+
+    private void removeCache() {
+
+        Log.e(TAG, "service destroyed");
+
+        new AsyncTask<Void, Void, Void>() {
+            @Override
+            protected Void doInBackground(Void... voids) {
+                locationDatabase.clearAllTables();
+                return null;
+            }
+        }.execute();
     }
 }
