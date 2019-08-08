@@ -54,7 +54,6 @@ import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.Task;
 
 import java.util.List;
-import java.util.concurrent.TimeUnit;
 
 import retrofit2.Call;
 import retrofit2.Callback;
@@ -84,7 +83,7 @@ public class LocationUpdateService extends Service {
     /**
      * The name of the channel for notifications.
      */
-    private static final String CHANNEL_ID = "channel_01";
+    private static final String CHANNEL_ID = "Bounce";
 
     public static final String ACTION_BROADCAST = PACKAGE_NAME + ".broadcast";
 
@@ -97,7 +96,7 @@ public class LocationUpdateService extends Service {
     /**
      * The desired interval for location updates. Inexact. Updates may be more or less frequent.
      */
-    private static final long UPDATE_INTERVAL_IN_MILLISECONDS =  30000;
+    private static final long UPDATE_INTERVAL_IN_MILLISECONDS =  10000;
 
     /**
      * The fastest rate for active location updates. Updates will never be more frequent
@@ -143,6 +142,8 @@ public class LocationUpdateService extends Service {
 
     private LocationDatabase locationDatabase;
 
+    private String diff;
+
 
 
     public LocationUpdateService() {
@@ -167,6 +168,7 @@ public class LocationUpdateService extends Service {
 
         };
 
+        LocationUtils.setTimestamp(this,000);
         createLocationRequest();
         getLastLocation();
 
@@ -283,6 +285,7 @@ public class LocationUpdateService extends Service {
     public void onDestroy() {
         //to remove all callbacks
         //removeCache();
+        removeLocationUpdates();
         Log.e(TAG, "In onDestroyed");
     }
 
@@ -345,7 +348,7 @@ public class LocationUpdateService extends Service {
                 .addAction(R.drawable.ic_cancel, getString(R.string.remove_location_updates),
                         servicePendingIntent)
                 .setContentText(text)
-                .setContentTitle(LocationUtils.getLocationTitle(this))
+                .setContentTitle("Location refreshed "+ diff+" seconds ago")
                 .setOngoing(true)
                 .setOnlyAlertOnce(true)
                 .setPriority(Notification.PRIORITY_HIGH)
@@ -384,10 +387,17 @@ public class LocationUpdateService extends Service {
         Log.e(TAG, "New location: " + location);
 
         mLocation = location;
-        //calculateDiff();
+
+
+
+        //calculate difference
+        diff= calculateDiff(location.getTime());
+
+        //set location time to pref
+        LocationUtils.setTimestamp(this,mLocation.getTime());
 
         // Notify anyone listening for broadcasts about the new location.
-       /* Intent intent = new Intent(ACTION_BROADCAST);
+        /* Intent intent = new Intent(ACTION_BROADCAST);
         intent.putExtra(EXTRA_LOCATION, location);
         LocalBroadcastManager.getInstance(getApplicationContext()).sendBroadcast(intent);*/
 
@@ -404,7 +414,7 @@ public class LocationUpdateService extends Service {
         mLocationRequest = new LocationRequest();
         mLocationRequest.setInterval(UPDATE_INTERVAL_IN_MILLISECONDS);
        // mLocationRequest.setMaxWaitTime(120000);
-        mLocationRequest.setFastestInterval(30000);
+        mLocationRequest.setFastestInterval(10000);
         // mLocationRequest.setSmallestDisplacement(Constants.SMALLEST_DISTANCE);
         mLocationRequest.setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY);
 
@@ -438,19 +448,17 @@ public class LocationUpdateService extends Service {
 
 
 
-    private String calculateDiff() {
+    private String calculateDiff(long time2) {
 
-        long a,b;
-        a=LocationUtils.getTimeStamp(this);
-        if(mLocation!=null)
-            b=mLocation.getTime();
-        else
-            b=000;
-        long diff = b - a;
+        long time1=LocationUtils.getTimeStamp(this);
 
-        long diffInSec = TimeUnit.MILLISECONDS.toSeconds(diff);
+        long diffMs = time2 - time1;
+        long diffSec = diffMs / 1000;
+        long min = diffSec / 60;
+        long sec = diffSec % 60;
+        Log.e(TAG,"The difference is "+min+" minutes and "+sec+" seconds.");
 
-        return String.valueOf(diffInSec);
+        return String.valueOf(sec);
     }
 
     private void callApi(List<LocationInfo> loc) {

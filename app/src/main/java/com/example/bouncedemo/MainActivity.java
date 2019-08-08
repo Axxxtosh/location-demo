@@ -144,9 +144,8 @@ public class MainActivity extends AppCompatActivity implements
             @Override
             public void onClick(View view) {
 
-               mLocationInfo.setText("Fetching LocationInfo Updates...");
 
-                setButtonsState(true);
+
                 if (!checkPermissions()) {
                     requestPermissions();
                 } else {
@@ -259,6 +258,7 @@ public class MainActivity extends AppCompatActivity implements
                 // Permission was granted.
 
                 animationView.setVisibility(View.VISIBLE);
+                setButtonsState(true);
                 LocationUtils.setRequestingLocationUpdates(MainActivity.this, true);
                 startService(new Intent(getApplicationContext(), LocationUpdateService.class));
             } else {
