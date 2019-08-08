@@ -30,7 +30,8 @@ public class LocationUtils {
     public static final String KEY_STOPPING_LOCATION_UPDATES = "stopping_locaction_updates";
 
     public static final String KEY_CACHE_ENABLE = "stopping_locaction_updates";
-    private static final String KEY_LOCATION_TIMESTAMP ="location_timestamp" ;
+    private static final String START_TIME ="start_time" ;
+    private static final String KEY_LOCATION_TIMESTAMP ="location_tracking_time" ;
 
     /**
      * Returns true if requesting location updates, otherwise returns false.
@@ -90,6 +91,17 @@ public class LocationUtils {
                 DateFormat.getDateTimeInstance().format(new Date()));
     }
 
+    public static void setStartTime(Context context, String requestingLocationUpdates) {
+        PreferenceManager.getDefaultSharedPreferences(context)
+                .edit()
+                .putString(START_TIME, requestingLocationUpdates)
+                .apply();
+    }
+    public static String getStartTime(Context context) {
+        return PreferenceManager.getDefaultSharedPreferences(context)
+                .getString(START_TIME,"no_time");
+    }
+
     public static void setTimestamp(Context context, long requestingLocationUpdates) {
         PreferenceManager.getDefaultSharedPreferences(context)
                 .edit()
@@ -99,5 +111,10 @@ public class LocationUtils {
     public static long getTimeStamp(Context context) {
         return PreferenceManager.getDefaultSharedPreferences(context)
                 .getLong(KEY_LOCATION_TIMESTAMP,0023L);
+    }
+
+    public static void clearAll(Context context){
+
+        PreferenceManager.getDefaultSharedPreferences(context).edit().clear().apply();
     }
 }

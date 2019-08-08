@@ -39,6 +39,9 @@ import com.bounce.location.LocationUtils;
 import com.facebook.stetho.Stetho;
 import com.google.android.material.snackbar.Snackbar;
 
+import java.text.SimpleDateFormat;
+import java.util.Calendar;
+
 /**
  * The only activity in this sample.
  *
@@ -102,6 +105,11 @@ public class MainActivity extends AppCompatActivity implements
         super.onCreate(savedInstanceState);
         //myReceiver = new MyReceiver();
         setContentView(R.layout.activity_main);
+        //set system time
+        String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss").format(Calendar.getInstance().getTime());
+        LocationUtils.setStartTime(this,timeStamp);
+
+        Log.e(TAG,"System time set "+ timeStamp);
 
         animationView = findViewById(R.id.animation_view);
         mLocationInfo=findViewById(R.id.tv_location);
@@ -126,7 +134,10 @@ public class MainActivity extends AppCompatActivity implements
     @Override
     protected void onDestroy() {
         super.onDestroy();
+
+        LocationUtils.clearAll(this);
         Log.e(TAG, "in onDestroy activity");
+        Log.e(TAG, "all preference deleted");
     }
 
     @Override
@@ -135,25 +146,19 @@ public class MainActivity extends AppCompatActivity implements
         PreferenceManager.getDefaultSharedPreferences(this)
                 .registerOnSharedPreferenceChangeListener(this);
 
-
-
         mRequestLocationUpdatesButton = (Button) findViewById(R.id.request_location_updates_button);
         mRemoveLocationUpdatesButton = (Button) findViewById(R.id.remove_location_updates_button);
-
         mRequestLocationUpdatesButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-
-
 
                 if (!checkPermissions()) {
                     requestPermissions();
                 } else {
                     //function in service for location updates
                     animationView.setVisibility(View.VISIBLE);
-
+                    setButtonsState(true);
                     //pass the activity context on which you want to observe the location
-
                     startService(new Intent(getApplicationContext(), LocationUpdateService.class));
                 }
             }
@@ -337,6 +342,7 @@ public class MainActivity extends AppCompatActivity implements
             mRemoveLocationUpdatesButton.setEnabled(false);
         }
     }
+
 
 
 
