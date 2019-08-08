@@ -189,7 +189,7 @@ public class LocationUpdateService extends Service {
         }
 
         //locationDatabase= Room.databaseBuilder(getApplicationContext(), LocationDatabase.class, "LOCATION").build();
-        requestLocationUpdates();
+
 
 
     }
@@ -244,6 +244,8 @@ public class LocationUpdateService extends Service {
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
         Log.e(TAG, "Service started");
+
+        requestLocationUpdates();
         boolean startedFromNotification = intent.getBooleanExtra(EXTRA_STARTED_FROM_NOTIFICATION,
                 false);
 
@@ -256,15 +258,6 @@ public class LocationUpdateService extends Service {
 
             startForeground(NOTIFICATION_ID, getNotification());
         }
-
-        //store timestamp for refresh time
-
-        /*if (mLocation != null)
-        {LocationUtils.setTimestamp(context,mLocation.getTime());
-
-        diff=calculateDiff();}*/
-
-
 
         // Tells the system to not try to recreate the service after it has been killed.
         return START_NOT_STICKY;
@@ -373,6 +366,9 @@ public class LocationUpdateService extends Service {
                         public void onComplete(@NonNull Task<Location> task) {
                             if (task.isSuccessful() && task.getResult() != null) {
                                 mLocation = task.getResult();
+                                //first location before repeated callbacks
+                                mNotificationManager.notify(NOTIFICATION_ID, getNotification());
+                                Log.e(TAG,"Last location: "+task.getResult());
                             } else {
                                 Log.w(TAG, "Failed to get location.");
                             }
@@ -412,9 +408,9 @@ public class LocationUpdateService extends Service {
      */
     private void createLocationRequest() {
         mLocationRequest = new LocationRequest();
-        mLocationRequest.setInterval(UPDATE_INTERVAL_IN_MILLISECONDS);
+        mLocationRequest.setInterval(40000);
        // mLocationRequest.setMaxWaitTime(120000);
-        mLocationRequest.setFastestInterval(10000);
+        mLocationRequest.setFastestInterval(20000);
         // mLocationRequest.setSmallestDisplacement(Constants.SMALLEST_DISTANCE);
         mLocationRequest.setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY);
 
