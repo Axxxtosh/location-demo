@@ -94,7 +94,7 @@ public class MainActivity extends AppCompatActivity implements
     private MyReceiver myReceiver;
 
     // A reference to the service used to get location updates.
-    private LocationUpdateService mService = null;
+    
 
     // Tracks the bound state of the service.
     private boolean mBound = false;
@@ -123,6 +123,7 @@ public class MainActivity extends AppCompatActivity implements
             mBound = false;
         }
     };
+    private LocationUpdateService mService;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -185,7 +186,8 @@ public class MainActivity extends AppCompatActivity implements
                     animationView.setVisibility(View.VISIBLE);
 
                     //pass the activity context on which you want to observe the location
-                    mService.requestLocationUpdates(MainActivity.this);
+                    LocationUtils.setRequestingLocationUpdates(MainActivity.this, true);
+                    startService(new Intent(getApplicationContext(), LocationUpdateService.class));
                 }
             }
         });
@@ -193,17 +195,15 @@ public class MainActivity extends AppCompatActivity implements
         mRemoveLocationUpdatesButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                mService.removeLocationUpdates();
+                LocationUtils.setRequestingLocationUpdates(MainActivity.this, false);
+                stopService(new Intent(getApplicationContext(), LocationUpdateService.class));
             }
         });
 
         // Restore the state of the buttons when the activity (re)launches.
         setButtonsState(LocationUtils.requestingLocationUpdates(this));
 
-        // Bind to the service. If the service is in foreground mode, this signals to the service
-        // that since this activity is in the foreground, the service can exit foreground mode.
-        bindService(new Intent(this, LocationUpdateService.class), mServiceConnection,
-                Context.BIND_AUTO_CREATE);
+
     }
 
     @Override
@@ -212,7 +212,8 @@ public class MainActivity extends AppCompatActivity implements
 
         if(LocationUtils.getStoppingFlag(this)){
 
-            mService.removeLocationUpdates();
+            LocationUtils.setRequestingLocationUpdates(MainActivity.this, false);
+            stopService(new Intent(getApplicationContext(), LocationUpdateService.class));
             mLocationInfo.setText("Stopped");
             animationView.setVisibility(View.GONE);
             LocationUtils.setStopingLocationUpdate(this,false);
@@ -294,7 +295,8 @@ public class MainActivity extends AppCompatActivity implements
                 // Permission was granted.
 
                 animationView.setVisibility(View.VISIBLE);
-                mService.requestLocationUpdates(this);
+                LocationUtils.setRequestingLocationUpdates(MainActivity.this, true);
+                startService(new Intent(getApplicationContext(), LocationUpdateService.class));
             } else {
                 // Permission denied.
                 setButtonsState(false);
@@ -329,8 +331,8 @@ public class MainActivity extends AppCompatActivity implements
         public void onReceive(Context context, Intent intent) {
             if (intent.getIntExtra("from", 0) == 1234){
 
-                mService.removeLocationUpdates();
-
+                LocationUtils.setRequestingLocationUpdates(MainActivity.this, false);
+                stopService(new Intent(getApplicationContext(), LocationUpdateService.class));
                 mLocationInfo.setText("Stopped");
                 animationView.setVisibility(View.GONE);
                 LocationUtils.setStopingLocationUpdate(context,false);

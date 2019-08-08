@@ -221,6 +221,7 @@ public class LocationUpdateService extends Service {
         locationDatabase= Room.databaseBuilder(getApplicationContext(), LocationDatabase.class, "LOCATION").build();
 
 
+        requestLocationUpdates();
 
 
     }
@@ -331,12 +332,11 @@ public class LocationUpdateService extends Service {
      * {@link SecurityException}.
      */
     @SuppressLint("MissingPermission")
-    public void requestLocationUpdates(Context context) {
+    public void requestLocationUpdates() {
 
-        this.context=context;
+
         Log.e(TAG, "Requesting location updates");
-        LocationUtils.setRequestingLocationUpdates(this, true);
-        startService(new Intent(getApplicationContext(), LocationUpdateService.class));
+
         try {
             mFusedLocationClient.requestLocationUpdates(mLocationRequest,
                     mLocationCallback, Looper.myLooper());
@@ -354,8 +354,7 @@ public class LocationUpdateService extends Service {
         Log.e(TAG, "Removing location updates");
         try {
             mFusedLocationClient.removeLocationUpdates(mLocationCallback);
-            LocationUtils.setRequestingLocationUpdates(this, false);
-            stopSelf();
+
         } catch (SecurityException unlikely) {
             LocationUtils.setRequestingLocationUpdates(this, true);
             Log.e(TAG, "Lost location permission. Could not remove updates. " + unlikely);
@@ -442,7 +441,7 @@ public class LocationUpdateService extends Service {
     private void createLocationRequest() {
         mLocationRequest = new LocationRequest();
         mLocationRequest.setInterval(UPDATE_INTERVAL_IN_MILLISECONDS);
-        mLocationRequest.setMaxWaitTime(120000);
+       // mLocationRequest.setMaxWaitTime(120000);
         mLocationRequest.setFastestInterval(30000);
         // mLocationRequest.setSmallestDisplacement(Constants.SMALLEST_DISTANCE);
         mLocationRequest.setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY);
