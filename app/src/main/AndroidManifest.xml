@@ -36,16 +36,9 @@
             android:enabled="true"
             android:exported="true"
             android:stopWithTask="false"
-            android:foregroundServiceType="location" />
+            android:foregroundServiceType="location"/>
 
 
-        <receiver android:name=".MainActivity$myTransitionReceiver"
-            android:exported="false"
-            android:permission="com.google.android.gms.permission.ACTIVITY_RECOGNITION">
-            <intent-filter>
-                <action android:name="com.example.bouncedemo.TRANSITION_ACTION_RECEIVER" />
-            </intent-filter>
-        </receiver>
     </application>
 
 </manifest>

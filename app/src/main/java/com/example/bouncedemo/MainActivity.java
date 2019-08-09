@@ -43,6 +43,8 @@ import com.airbnb.lottie.LottieAnimationView;
 import com.bounce.location.LocationUpdateService;
 import com.bounce.location.LocationUtils;
 import com.example.bouncedemo.Logs.LogFragment;
+import com.facebook.battery.metrics.cpu.CpuMetrics;
+import com.facebook.battery.metrics.cpu.CpuMetricsCollector;
 import com.facebook.stetho.Stetho;
 import com.google.android.gms.location.ActivityRecognition;
 import com.google.android.gms.location.ActivityTransition;
@@ -106,6 +108,9 @@ public class MainActivity extends AppCompatActivity implements
     private static final String TRANSITIONS_RECEIVER_ACTION ="my_action" ;
 
 
+    private static final CpuMetricsCollector sCollector = new CpuMetricsCollector();
+    private final CpuMetrics mInitialMetrics = sCollector.createMetrics();
+    private final CpuMetrics mFinalMetrics = sCollector.createMetrics();
     //transition
     // Intents action that will be fired when transitions are triggered
     private final String TRANSITION_ACTION_RECEIVER =
@@ -220,6 +225,8 @@ public class MainActivity extends AppCompatActivity implements
     @Override
     protected void onResume() {
         super.onResume();
+
+        sCollector.getSnapshot(mInitialMetrics);
         setUpTransitions();
         setButtonsState(LocationUtils.requestingLocationUpdates(this));
         /*if(!LocationUtils.getStoppingFlag(this)){
@@ -352,6 +359,9 @@ public class MainActivity extends AppCompatActivity implements
     @Override
     protected void onPause() {
         // Unregister the transitions:
+
+        sCollector.getSnapshot(mFinalMetrics);
+        Log.e                                                                                           ("BatteryMetrics", mFinalMetrics.diff(mInitialMetrics).toString());
         ActivityRecognition.getClient(this).removeActivityTransitionUpdates(mPendingIntent)
                 .addOnSuccessListener(new OnSuccessListener<Void>() {
                     @Override
@@ -389,6 +399,30 @@ public class MainActivity extends AppCompatActivity implements
         transitions.add(
                 new ActivityTransition.Builder()
                         .setActivityType(DetectedActivity.WALKING)
+                        .setActivityTransition(ActivityTransition.ACTIVITY_TRANSITION_EXIT)
+                        .build());
+
+        transitions.add(
+                new ActivityTransition.Builder()
+                        .setActivityType(DetectedActivity.IN_VEHICLE)
+                        .setActivityTransition(ActivityTransition.ACTIVITY_TRANSITION_ENTER)
+                        .build());
+
+        transitions.add(
+                new ActivityTransition.Builder()
+                        .setActivityType(DetectedActivity.IN_VEHICLE)
+                        .setActivityTransition(ActivityTransition.ACTIVITY_TRANSITION_EXIT)
+                        .build());
+
+        transitions.add(
+                new ActivityTransition.Builder()
+                        .setActivityType(DetectedActivity.ON_FOOT)
+                        .setActivityTransition(ActivityTransition.ACTIVITY_TRANSITION_ENTER)
+                        .build());
+
+        transitions.add(
+                new ActivityTransition.Builder()
+                        .setActivityType(DetectedActivity.ON_FOOT)
                         .setActivityTransition(ActivityTransition.ACTIVITY_TRANSITION_EXIT)
                         .build());
 

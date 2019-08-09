@@ -45,6 +45,8 @@ import com.bounce.location.remote.GetDataService;
 import com.bounce.location.remote.RetrofitClientInstance;
 import com.bounce.location.room.LocationDatabase;
 import com.bounce.location.room.LocationInfo;
+import com.facebook.battery.metrics.cpu.CpuMetrics;
+import com.facebook.battery.metrics.cpu.CpuMetricsCollector;
 import com.google.android.gms.location.FusedLocationProviderClient;
 import com.google.android.gms.location.LocationCallback;
 import com.google.android.gms.location.LocationRequest;
@@ -92,6 +94,9 @@ public class LocationUpdateService extends Service {
             ".started_from_notification";
 
 
+    private static final CpuMetricsCollector sCollector = new CpuMetricsCollector();
+    private final CpuMetrics mInitialMetrics = sCollector.createMetrics();
+    private final CpuMetrics mFinalMetrics = sCollector.createMetrics();
 
     /**
      * The desired interval for location updates. Inexact. Updates may be more or less frequent.
@@ -278,6 +283,9 @@ public class LocationUpdateService extends Service {
     public void onDestroy() {
         //to remove all callbacks
         //removeCache();
+
+        sCollector.getSnapshot(mFinalMetrics);
+        Log.e("BatteryMetrics", mFinalMetrics.diff(mInitialMetrics).toString());
         removeLocationUpdates();
         Log.e(TAG, "In onDestroyed");
     }
