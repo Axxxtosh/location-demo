@@ -367,7 +367,7 @@ public class LocationUpdateService extends Service {
                 .addAction(R.drawable.ic_cancel, getString(R.string.remove_location_updates),
                         servicePendingIntent)
                 .setContentText(text)
-                .setContentTitle(" Location refreshed after"+ diff+" seconds.")
+                .setContentTitle(diff)
                 .setOngoing(true)
                 .setOnlyAlertOnce(true)
                 .setPriority(Notification.PRIORITY_HIGH)
@@ -429,9 +429,9 @@ public class LocationUpdateService extends Service {
     private void createLocationRequest() {
         mLocationRequest = new LocationRequest();
         mLocationRequest.setInterval(20000);
-        mLocationRequest.setMaxWaitTime(100000);
+       // mLocationRequest.setMaxWaitTime(100000);
         mLocationRequest.setFastestInterval(20000);//affects batching
-        //mLocationRequest.setSmallestDisplacement(1);
+        mLocationRequest.setSmallestDisplacement(10);
         //mLocationRequest.setSmallestDisplacement(SMALLEST_DISTANCE);
         mLocationRequest.setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY);
     }
@@ -449,10 +449,10 @@ public class LocationUpdateService extends Service {
         long diffSec = diffMs / 1000;
         long min = diffSec / 60;
         long sec = diffSec % 60;
-        Log.e(TAG,"The difference is "+min+" minutes and "+sec+" seconds.");
+        Log.e(TAG,"Refreshed after "+min+" minutes and "+sec+" seconds");
 
 
-        return String.valueOf(sec);
+        return "Refreshed after "+min+" minutes and "+sec+" seconds";
     }
 
     private void callApi(String locList) {

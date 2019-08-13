@@ -155,8 +155,6 @@ public class MainActivity extends AppCompatActivity implements
             }
         }
 
-        mLogFragment = (LogFragment) getSupportFragmentManager().findFragmentById(R.id.log_fragment);
-
     }
 
     @Override
