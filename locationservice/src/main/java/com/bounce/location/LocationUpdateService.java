@@ -17,7 +17,6 @@
 package com.bounce.location;
 
 import android.annotation.SuppressLint;
-import android.app.ActivityManager;
 import android.app.Notification;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
@@ -39,6 +38,7 @@ import android.util.Log;
 
 import androidx.annotation.NonNull;
 import androidx.core.app.NotificationCompat;
+import androidx.room.Room;
 
 import com.bounce.location.remote.Example;
 import com.bounce.location.remote.GetDataService;
@@ -54,6 +54,8 @@ import com.google.android.gms.location.LocationResult;
 import com.google.android.gms.location.LocationServices;
 import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.Task;
+import com.google.gson.Gson;
+import com.judemanutd.autostarter.AutoStartPermissionHelper;
 
 import java.util.List;
 
@@ -95,6 +97,7 @@ public class LocationUpdateService extends Service {
 
 
     private static final CpuMetricsCollector sCollector = new CpuMetricsCollector();
+    private static final float SMALLEST_DISTANCE = 1;
     private final CpuMetrics mInitialMetrics = sCollector.createMetrics();
     private final CpuMetrics mFinalMetrics = sCollector.createMetrics();
 
@@ -156,6 +159,11 @@ public class LocationUpdateService extends Service {
 
     @Override
     public void onCreate() {
+
+
+        //auto starter for chinese OEMs
+        AutoStartPermissionHelper.getInstance().getAutoStartPermission(getApplicationContext());
+        Log.e(TAG,"auto starter for OENs initialised");
         mFusedLocationClient = LocationServices.getFusedLocationProviderClient(this);
 
         mLocationCallback = new LocationCallback() {
@@ -165,7 +173,27 @@ public class LocationUpdateService extends Service {
                 //may be a batch
                 onNewLocation(locationResult.getLastLocation());
                 Log.e(TAG,"Batch size: "+locationResult.getLocations().size());
+
+
+
+                for(int i = 0; i < locationResult.getLocations().size(); i++) {
+
+                    Log.e(TAG,"Batch data: "+locationResult.getLocations().get(i).toString());
+
+
+                }
+
+
                 //checkNetworkforApi();
+
+                // create a new Gson instance
+                Gson gson = new Gson();
+                // convert your list to json
+                String jsonLocationList = gson.toJson(locationResult);
+                // print your generated json
+                Log.e(TAG,"jsonLocationList: " + jsonLocationList);
+
+                callApi(jsonLocationList);
 
             }
 
@@ -193,7 +221,7 @@ public class LocationUpdateService extends Service {
             mNotificationManager.createNotificationChannel(mChannel);
         }
 
-        //locationDatabase= Room.databaseBuilder(getApplicationContext(), LocationDatabase.class, "LOCATION").build();
+        locationDatabase= Room.databaseBuilder(getApplicationContext(), LocationDatabase.class, "LOCATION").build();
 
 
 
@@ -201,7 +229,10 @@ public class LocationUpdateService extends Service {
 
     private void checkNetworkforApi() {
 
-               /* if(isNetworkAvailable(getApplicationContext())){
+
+
+/*
+                if(isNetworkAvailable(getApplicationContext())){
 
                     Log.e(TAG,"checking connection : available ");
 
@@ -217,7 +248,7 @@ public class LocationUpdateService extends Service {
                     locationInfos.add(locationInfo);
 
 
-                    callApi(locationInfos);
+
                 }
                 else{
 
@@ -349,7 +380,7 @@ public class LocationUpdateService extends Service {
                 .addAction(R.drawable.ic_cancel, getString(R.string.remove_location_updates),
                         servicePendingIntent)
                 .setContentText(text)
-                .setContentTitle("Location refreshed "+ diff+" seconds ago")
+                .setContentTitle(" Location refreshed after"+ diff+" seconds.")
                 .setOngoing(true)
                 .setOnlyAlertOnce(true)
                 .setPriority(Notification.PRIORITY_HIGH)
@@ -378,7 +409,7 @@ public class LocationUpdateService extends Service {
                                 mNotificationManager.notify(NOTIFICATION_ID, getNotification());
                                 Log.e(TAG,"Last location: "+task.getResult());
                             } else {
-                                Log.w(TAG, "Failed to get location.");
+                                Log.e(TAG, "Failed to get location.");
                             }
                         }
                     });
@@ -388,27 +419,21 @@ public class LocationUpdateService extends Service {
     }
 
     private void onNewLocation(Location location) {
+
+
         Log.e(TAG, "New location: " + location);
-
         mLocation = location;
-
-
-
         //calculate difference
         diff= calculateDiff(location.getTime());
-
         //set location time to pref
         LocationUtils.setTimestamp(this,mLocation.getTime());
-
         // Notify anyone listening for broadcasts about the new location.
-        /* Intent intent = new Intent(ACTION_BROADCAST);
+       /*  Intent intent = new Intent(ACTION_BROADCAST);
         intent.putExtra(EXTRA_LOCATION, location);
         LocalBroadcastManager.getInstance(getApplicationContext()).sendBroadcast(intent);*/
-
         //API call here
         // Update notification content if running as a foreground service.
         mNotificationManager.notify(NOTIFICATION_ID, getNotification());
-
     }
 
     /**
@@ -416,32 +441,12 @@ public class LocationUpdateService extends Service {
      */
     private void createLocationRequest() {
         mLocationRequest = new LocationRequest();
-        mLocationRequest.setInterval(40000);
-       // mLocationRequest.setMaxWaitTime(120000);
-        mLocationRequest.setFastestInterval(20000);
-        // mLocationRequest.setSmallestDisplacement(Constants.SMALLEST_DISTANCE);
+        mLocationRequest.setInterval(20000);
+        mLocationRequest.setMaxWaitTime(100000);
+        mLocationRequest.setFastestInterval(20000);//affects batching
+        //mLocationRequest.setSmallestDisplacement(1);
+        //mLocationRequest.setSmallestDisplacement(SMALLEST_DISTANCE);
         mLocationRequest.setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY);
-
-
-    }
-
-    /**
-     * Returns true if this is a foreground service.
-     *
-     * @param context The {@link Context}.
-     */
-    public boolean serviceIsRunningInForeground(Context context) {
-        ActivityManager manager = (ActivityManager) context.getSystemService(
-                Context.ACTIVITY_SERVICE);
-        for (ActivityManager.RunningServiceInfo service : manager.getRunningServices(
-                Integer.MAX_VALUE)) {
-            if (getClass().getName().equals(service.service.getClassName())) {
-                if (service.foreground) {
-                    return true;
-                }
-            }
-        }
-        return false;
     }
 
     @Override
@@ -455,27 +460,25 @@ public class LocationUpdateService extends Service {
     private String calculateDiff(long time2) {
 
         long time1=LocationUtils.getTimeStamp(this);
-
         long diffMs = time2 - time1;
         long diffSec = diffMs / 1000;
         long min = diffSec / 60;
         long sec = diffSec % 60;
         Log.e(TAG,"The difference is "+min+" minutes and "+sec+" seconds.");
 
+
         return String.valueOf(sec);
     }
 
-    private void callApi(List<LocationInfo> loc) {
+    private void callApi(String locList) {
         GetDataService service = RetrofitClientInstance.getRetrofitInstance().create(GetDataService.class);
-        Call<List<Example>> call=service.getAll(loc);
+        Call<List<Example>> call=service.getAll(locList);
 
         call.enqueue(new Callback<List<Example>>() {
             @Override
             public void onResponse(Call<List<Example>> call, Response<List<Example>> response) {
 
                 Log.e("API Call","success");
-
-
 
             }
 

@@ -41,7 +41,10 @@ dependencies {
     implementation 'com.google.firebase:firebase-messaging:17.3.4'
     implementation 'com.facebook.stetho:stetho:1.5.1'
     implementation 'android.arch.persistence.room:runtime:1.1.1'
+    implementation 'com.github.judemanutd:autostarter:1.0.3'
     annotationProcessor 'android.arch.persistence.room:compiler:1.1.1'
+
+
 
     //battery matrices
 

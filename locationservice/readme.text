@@ -1,0 +1,28 @@
+/// Fused api for better battery
+
+Applications cannot specify the exact location sources, such as GPS,
+that are used by the LocationClient. In fact, the system may have multiple location sources (providers)
+running and may fuse the results from several sources into a single Location object.
+
+combining with    // mLocationRequest.setMaxWaitTime(120000); for batching
+
+ // mLocationRequest.setSmallestDisplacement(Constants.SMALLEST_DISTANCE); for distance
+
+ with activity recognition ----not feasible
+
+
+
+data and accuracy-- (horizontal direction of travel), altitude, or velocity of the device.
+
+--options in The accuracy of the location is determined by the providers,
+ the location permissions you've requested, and the options you set in the location request.
+
+
+ --PRIORITY_BALANCED_POWER_ACCURACY --100 meters
+ PRIORITY_HIGH_ACCURACY ---most precise available--likely gps
+
+
+ --set interval and set fastest
+
+ ---optional--This API makes it easy for an app to ensure that the
+ device's system settings are properly configured for the app's location needs.

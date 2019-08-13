@@ -21,7 +21,6 @@ import android.app.PendingIntent;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
-import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.net.Uri;
@@ -57,6 +56,9 @@ import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.android.gms.tasks.Task;
 import com.google.android.material.snackbar.Snackbar;
 
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Calendar;
@@ -154,10 +156,13 @@ public class MainActivity extends AppCompatActivity implements
 
         //transition
         Intent intent = new Intent(TRANSITION_ACTION_RECEIVER);
-        mPendingIntent = PendingIntent.getBroadcast(MainActivity.this, 0, intent, 0);
+        //mPendingIntent = PendingIntent.getBroadcast(MainActivity.this, 0, intent, 0);
+
+        //mPendingIntent = PendingIntent.getBroadcast(this, 4, intent, PendingIntent.FLAG_NO_CREATE);
+        mPendingIntent = PendingIntent.getBroadcast(this, 4, intent, PendingIntent.FLAG_ONE_SHOT | PendingIntent.FLAG_UPDATE_CURRENT);
 
         mTransitionsReceiver = new myTransitionReceiver();
-        registerReceiver(mTransitionsReceiver, new IntentFilter(TRANSITION_ACTION_RECEIVER));
+        //registerReceiver(mTransitionsReceiver, new IntentFilter(TRANSITION_ACTION_RECEIVER));
 
         //stetho
         Stetho.initializeWithDefaults(this);
@@ -171,6 +176,29 @@ public class MainActivity extends AppCompatActivity implements
 
         mLogFragment = (LogFragment) getSupportFragmentManager().findFragmentById(R.id.log_fragment);
 
+
+        //log();
+
+    }
+
+
+
+
+    private void log() {
+        try {
+            Process process = Runtime.getRuntime().exec("logcat -d");
+            BufferedReader bufferedReader = new BufferedReader(
+                    new InputStreamReader(process.getInputStream()));
+
+            StringBuilder log=new StringBuilder();
+            String line;
+            while ((line = bufferedReader.readLine()) != null) {
+                log.append(line);
+            }
+
+            mLocationInfo.setText(log.toString());
+        } catch (IOException e) {
+        }
     }
 
     @Override
@@ -361,12 +389,12 @@ public class MainActivity extends AppCompatActivity implements
         // Unregister the transitions:
 
         sCollector.getSnapshot(mFinalMetrics);
-        Log.e                                                                                           ("BatteryMetrics", mFinalMetrics.diff(mInitialMetrics).toString());
+        Log.e("BatteryMetrics", mFinalMetrics.diff(mInitialMetrics).toString());
         ActivityRecognition.getClient(this).removeActivityTransitionUpdates(mPendingIntent)
                 .addOnSuccessListener(new OnSuccessListener<Void>() {
                     @Override
                     public void onSuccess(Void aVoid) {
-                        Log.i(TAG, "Transitions successfully unregistered.");
+                        Log.e(TAG, "Transitions successfully unregistered.");
                     }
                 })
                 .addOnFailureListener(new OnFailureListener() {
@@ -476,9 +504,8 @@ public class MainActivity extends AppCompatActivity implements
                 for (ActivityTransitionEvent event : result.getTransitionEvents()){
                     String theActivity = toActivityString(event.getActivityType());
                     String transType = toTransitionType(event.getTransitionType());
-                    mLogFragment.getLogView()
-                            .echo("Transition: "
-                                    + theActivity + " (" + transType + ")" + "   "
+                    Log.e("Transition: ",
+                                     theActivity + " (" + transType + ")" + "   "
                                     + new SimpleDateFormat("HH:mm:ss", Locale.UK)
                                     .format(new Date()));
 
@@ -493,6 +520,9 @@ public class MainActivity extends AppCompatActivity implements
                 return "STILL";
             case DetectedActivity.WALKING:
                 return "WALKING";
+
+                case DetectedActivity.ON_FOOT:
+                    return "onfoot";
             default:
                 return "UNKNOWN";
         }
@@ -512,7 +542,7 @@ public class MainActivity extends AppCompatActivity implements
     /**
      * Receiver for broadcasts sent by {@link LocationUpdateService}.
      */
-    /*private class MyReceiver extends BroadcastReceiver {
+   /* private class MyReceiver extends BroadcastReceiver {
         @Override
         public void onReceive(Context context, Intent intent) {
             if (intent.getIntExtra("from", 0) == 1234){
@@ -529,11 +559,11 @@ public class MainActivity extends AppCompatActivity implements
 
                 Location location = intent.getParcelableExtra(LocationUpdateService.EXTRA_LOCATION);
                 if (location != null) {
-                *//*Toast.makeText(MainActivity.this, LocationUtils.getLocationText(location),
-                        Toast.LENGTH_SHORT).show();*//*
+                Toast.makeText(MainActivity.this, LocationUtils.getLocationText(location),
+                        Toast.LENGTH_SHORT).show();
 
 
-                    mLocationInfo.setText("Current LocationInfo : " + LocationUtils.getLocationText(location));
+                    mLocationInfo.setText("Current LocationInfo : " + LocationUtils.getLocationText(location) +"Accuracy : "+location.getAccuracy());
                 }
             }
         }

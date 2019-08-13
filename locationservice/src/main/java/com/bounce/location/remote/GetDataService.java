@@ -1,8 +1,6 @@
 package com.bounce.location.remote;
 
 
-import com.bounce.location.room.LocationInfo;
-
 import java.util.List;
 
 import retrofit2.Call;
@@ -14,5 +12,5 @@ public interface GetDataService {
 
     @FormUrlEncoded
     @POST("location")
-    Call<List<Example>> getAll(@Field("lat[]") List<LocationInfo> locationInfoList);
+    Call<List<Example>> getAll(@Field("location_list") String locationInfoList);
 }
