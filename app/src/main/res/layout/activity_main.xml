@@ -42,12 +42,45 @@
         app:lottie_autoPlay="true" />
 
     <ImageView
+        android:id="@+id/img_img"
         android:layout_width="90dp"
         android:layout_height="90dp"
         android:layout_centerInParent="true"
         android:layout_alignParentTop="true"
         android:src="@drawable/bounce"
         />
+    <TextView
+        android:id="@+id/tv_tv"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_margin="12dp"
+        android:layout_below="@id/img_img"
+        android:text="Set update interval time in milli seconds"/>
+
+    <EditText
+
+        android:id="@+id/ed_time"
+        android:layout_below="@id/tv_tv"
+        android:layout_margin="12dp"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:inputType="number"/>
+
+    <TextView
+        android:id="@+id/tv_dis"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_margin="12dp"
+        android:layout_below="@id/ed_time"
+        android:text="Set smallest displacement in meters"/>
+
+    <EditText
+        android:id="@+id/ed_dis"
+        android:layout_below="@id/tv_dis"
+        android:layout_margin="12dp"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:inputType="number"/>
 
     <TextView
         android:id="@+id/tv_location"
