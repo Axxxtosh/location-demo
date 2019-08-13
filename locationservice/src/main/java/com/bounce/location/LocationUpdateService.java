@@ -428,9 +428,9 @@ public class LocationUpdateService extends Service {
      */
     private void createLocationRequest() {
         mLocationRequest = new LocationRequest();
-        mLocationRequest.setInterval(2000);
-        mLocationRequest.setMaxWaitTime(10000);
-        mLocationRequest.setFastestInterval(2000);//affects batching
+        mLocationRequest.setInterval(20000);
+        mLocationRequest.setMaxWaitTime(100000);
+        mLocationRequest.setFastestInterval(20000);//affects batching
         //mLocationRequest.setSmallestDisplacement(1);
         //mLocationRequest.setSmallestDisplacement(SMALLEST_DISTANCE);
         mLocationRequest.setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY);
