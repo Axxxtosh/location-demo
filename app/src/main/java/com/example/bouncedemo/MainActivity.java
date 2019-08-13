@@ -18,8 +18,6 @@ package com.example.bouncedemo;
 
 import android.Manifest;
 import android.app.PendingIntent;
-import android.content.BroadcastReceiver;
-import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
@@ -27,12 +25,10 @@ import android.net.Uri;
 import android.os.Bundle;
 import android.preference.PreferenceManager;
 import android.provider.Settings;
-import android.text.TextUtils;
 import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.TextView;
-import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
@@ -47,24 +43,17 @@ import com.facebook.battery.metrics.cpu.CpuMetricsCollector;
 import com.facebook.stetho.Stetho;
 import com.google.android.gms.location.ActivityRecognition;
 import com.google.android.gms.location.ActivityTransition;
-import com.google.android.gms.location.ActivityTransitionEvent;
 import com.google.android.gms.location.ActivityTransitionRequest;
-import com.google.android.gms.location.ActivityTransitionResult;
 import com.google.android.gms.location.DetectedActivity;
 import com.google.android.gms.tasks.OnFailureListener;
 import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.android.gms.tasks.Task;
 import com.google.android.material.snackbar.Snackbar;
 
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStreamReader;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Calendar;
-import java.util.Date;
 import java.util.List;
-import java.util.Locale;
 
 /**
  * The only activity in this sample.
@@ -121,7 +110,7 @@ public class MainActivity extends AppCompatActivity implements
     private LogFragment mLogFragment;
 
     private PendingIntent mPendingIntent;
-    private myTransitionReceiver mTransitionsReceiver;
+
 
     // The BroadcastReceiver used to listen from broadcasts from the service.
     //private MyReceiver myReceiver;
@@ -154,15 +143,7 @@ public class MainActivity extends AppCompatActivity implements
         animationView = findViewById(R.id.animation_view);
         mLocationInfo=findViewById(R.id.tv_location);
 
-        //transition
-        Intent intent = new Intent(TRANSITION_ACTION_RECEIVER);
-        //mPendingIntent = PendingIntent.getBroadcast(MainActivity.this, 0, intent, 0);
 
-        //mPendingIntent = PendingIntent.getBroadcast(this, 4, intent, PendingIntent.FLAG_NO_CREATE);
-        mPendingIntent = PendingIntent.getBroadcast(this, 4, intent, PendingIntent.FLAG_ONE_SHOT | PendingIntent.FLAG_UPDATE_CURRENT);
-
-        mTransitionsReceiver = new myTransitionReceiver();
-        //registerReceiver(mTransitionsReceiver, new IntentFilter(TRANSITION_ACTION_RECEIVER));
 
         //stetho
         Stetho.initializeWithDefaults(this);
@@ -176,29 +157,6 @@ public class MainActivity extends AppCompatActivity implements
 
         mLogFragment = (LogFragment) getSupportFragmentManager().findFragmentById(R.id.log_fragment);
 
-
-        //log();
-
-    }
-
-
-
-
-    private void log() {
-        try {
-            Process process = Runtime.getRuntime().exec("logcat -d");
-            BufferedReader bufferedReader = new BufferedReader(
-                    new InputStreamReader(process.getInputStream()));
-
-            StringBuilder log=new StringBuilder();
-            String line;
-            while ((line = bufferedReader.readLine()) != null) {
-                log.append(line);
-            }
-
-            mLocationInfo.setText(log.toString());
-        } catch (IOException e) {
-        }
     }
 
     @Override
@@ -268,8 +226,6 @@ public class MainActivity extends AppCompatActivity implements
         /*LocalBroadcastManager.getInstance(this).registerReceiver(myReceiver,
                 new IntentFilter(LocationUpdateService.ACTION_BROADCAST));*/
     }
-
-
 
     /**
      * Returns the current state of the permissions needed.
@@ -379,30 +335,13 @@ public class MainActivity extends AppCompatActivity implements
         }
     }
 
-
-
-
-    //transition api
-
     @Override
     protected void onPause() {
         // Unregister the transitions:
 
         sCollector.getSnapshot(mFinalMetrics);
         Log.e("BatteryMetrics", mFinalMetrics.diff(mInitialMetrics).toString());
-        ActivityRecognition.getClient(this).removeActivityTransitionUpdates(mPendingIntent)
-                .addOnSuccessListener(new OnSuccessListener<Void>() {
-                    @Override
-                    public void onSuccess(Void aVoid) {
-                        Log.e(TAG, "Transitions successfully unregistered.");
-                    }
-                })
-                .addOnFailureListener(new OnFailureListener() {
-                    @Override
-                    public void onFailure(@NonNull Exception e) {
-                        Log.e(TAG, "Transitions could not be unregistered: " + e);
-                    }
-                });
+
 
         super.onPause();
     }
@@ -490,29 +429,7 @@ public class MainActivity extends AppCompatActivity implements
                 });
     }
 
-    public class myTransitionReceiver extends BroadcastReceiver {
-        @Override
-        public void onReceive(Context context, Intent intent) {
-            if (!TextUtils.equals(TRANSITION_ACTION_RECEIVER, intent.getAction())){
-                Toast.makeText(context, "Unsupported action received in myTransitionReceiver ", Toast.LENGTH_SHORT).show();
 
-                return;
-            }
-
-            if (ActivityTransitionResult.hasResult(intent)){
-                ActivityTransitionResult result = ActivityTransitionResult.extractResult(intent);
-                for (ActivityTransitionEvent event : result.getTransitionEvents()){
-                    String theActivity = toActivityString(event.getActivityType());
-                    String transType = toTransitionType(event.getTransitionType());
-                    Log.e("Transition: ",
-                                     theActivity + " (" + transType + ")" + "   "
-                                    + new SimpleDateFormat("HH:mm:ss", Locale.UK)
-                                    .format(new Date()));
-
-                }
-            }
-        }
-    }
 
     private static String toActivityString(int activity) {
         switch (activity) {

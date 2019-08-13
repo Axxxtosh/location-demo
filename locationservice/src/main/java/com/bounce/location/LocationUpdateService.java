@@ -151,7 +151,7 @@ public class LocationUpdateService extends Service {
     private LocationDatabase locationDatabase;
 
     private String diff;
-
+    private String cachedJson;
 
 
     public LocationUpdateService() {
@@ -174,18 +174,13 @@ public class LocationUpdateService extends Service {
                 onNewLocation(locationResult.getLastLocation());
                 Log.e(TAG,"Batch size: "+locationResult.getLocations().size());
 
-
-
-                for(int i = 0; i < locationResult.getLocations().size(); i++) {
+                /* for(int i = 0; i < locationResult.getLocations().size(); i++) {
 
                     Log.e(TAG,"Batch data: "+locationResult.getLocations().get(i).toString());
 
 
-                }
-
-
+                }*/
                 //checkNetworkforApi();
-
                 // create a new Gson instance
                 Gson gson = new Gson();
                 // convert your list to json
@@ -193,7 +188,7 @@ public class LocationUpdateService extends Service {
                 // print your generated json
                 Log.e(TAG,"jsonLocationList: " + jsonLocationList);
 
-                callApi(jsonLocationList);
+                checkNetworkforApi(jsonLocationList);
 
             }
 
@@ -227,44 +222,33 @@ public class LocationUpdateService extends Service {
 
     }
 
-    private void checkNetworkforApi() {
+    private void checkNetworkforApi(String jsonData) {
 
-
-
-/*
-                if(isNetworkAvailable(getApplicationContext())){
+        if(isNetworkAvailable(getApplicationContext())){
 
                     Log.e(TAG,"checking connection : available ");
-
                     //upload data from cache if available and clear the cache
                     LocationInfo locationInfo=new LocationInfo();
-
-                    locationInfo.setLatitude(locationResult.getLastLocation().getLatitude());
-                    locationInfo.setLongitude(locationResult.getLastLocation().getLongitude());
-                    locationInfo.setAccuracy(locationResult.getLastLocation().getAccuracy());
-
-                    List<LocationInfo> locationInfos=new ArrayList<>();
-
-                    locationInfos.add(locationInfo);
+                    locationInfo.setJson(jsonData);
 
 
+
+                    callApi(jsonData+","+getCache());
 
                 }
                 else{
 
                     Log.e(TAG,"checking connection : not available ");
-                    cacheData(locationResult);
-                }*/
+                    cacheData(jsonData);
+                }
     }
 
 
-    private void cacheData(LocationResult locationResult) {
+    private void cacheData(String locationResult) {
 
         final LocationInfo location=new LocationInfo();
 
-        location.setLatitude(locationResult.getLastLocation().getLatitude());
-        location.setLongitude(locationResult.getLastLocation().getLongitude());
-        location.setAccuracy(locationResult.getLastLocation().getTime());
+        location.setJson(locationResult);
 
         Log.e(TAG,"caching data ");
 
@@ -347,6 +331,9 @@ public class LocationUpdateService extends Service {
      */
     public void removeLocationUpdates() {
         Log.e(TAG, "Removing location updates");
+        Log.e(TAG, "Removing cache data");
+
+        removeCache();
 
         LocationUtils.setRequestingLocationUpdates(this, false);
         try {
@@ -441,9 +428,9 @@ public class LocationUpdateService extends Service {
      */
     private void createLocationRequest() {
         mLocationRequest = new LocationRequest();
-        mLocationRequest.setInterval(20000);
-        mLocationRequest.setMaxWaitTime(100000);
-        mLocationRequest.setFastestInterval(20000);//affects batching
+        mLocationRequest.setInterval(2000);
+        mLocationRequest.setMaxWaitTime(10000);
+        mLocationRequest.setFastestInterval(2000);//affects batching
         //mLocationRequest.setSmallestDisplacement(1);
         //mLocationRequest.setSmallestDisplacement(SMALLEST_DISTANCE);
         mLocationRequest.setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY);
@@ -454,8 +441,6 @@ public class LocationUpdateService extends Service {
         super.onTaskRemoved(rootIntent);
         Log.e(TAG, "In onTaskRemoved");
     }
-
-
 
     private String calculateDiff(long time2) {
 
@@ -509,9 +494,10 @@ public class LocationUpdateService extends Service {
         return isConnected;
     }
 
+    @SuppressLint("StaticFieldLeak")
     private void removeCache() {
 
-        Log.e(TAG, "service destroyed");
+        Log.e(TAG, "remove cache");
 
         new AsyncTask<Void, Void, Void>() {
             @Override
@@ -521,4 +507,38 @@ public class LocationUpdateService extends Service {
             }
         }.execute();
     }
+
+    @SuppressLint("StaticFieldLeak")
+    private String getCache() {
+
+        Log.e(TAG, "in get cache block");
+
+
+
+        new AsyncTask<Void, String, Void>() {
+            @Override
+            protected Void doInBackground(Void... voids) {
+                locationDatabase.daoLocation().loadCache();
+
+                // create a new Gson instance
+                Gson gson = new Gson();
+                // convert your list to json
+                String jsonLocationList = gson.toJson(locationDatabase.daoLocation().loadCache());
+                // print your generated json
+                Log.e(TAG,"jsonLocationList: " + jsonLocationList);
+
+                cachedJson=jsonLocationList;
+
+                return null;
+            }
+        }.execute();
+
+
+        Log.e(TAG,"cached location data "+cachedJson);
+        return cachedJson;
+    }
+
+
+
+
 }

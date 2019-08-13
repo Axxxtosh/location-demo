@@ -8,7 +8,7 @@ import retrofit2.converter.gson.GsonConverterFactory;
 public class RetrofitClientInstance {
 
     private static Retrofit retrofit;
-    private static final String BASE_URL = "https://postb.in/1565690573810-2757712018210/";
+    private static final String BASE_URL = "https://bounce-demo.free.beeceptor.com/";
 
     public static Retrofit getRetrofitInstance() {
 

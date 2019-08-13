@@ -8,18 +8,16 @@ import androidx.room.PrimaryKey;
 @Entity
 public class LocationInfo {
 
+    @ColumnInfo(name = "json")
+    private String json;
 
-    @ColumnInfo(name = "lat")
-    private double latitude;
+    public String getJson() {
+        return json;
+    }
 
-    @ColumnInfo(name = "long")
-    private double longitude;
-
-    @PrimaryKey(autoGenerate = true)
-    private int id;
-
-    @ColumnInfo(name = "accuracy")
-    private float accuracy;
+    public void setJson(String json) {
+        this.json = json;
+    }
 
     public int getId() {
         return id;
@@ -29,29 +27,7 @@ public class LocationInfo {
         this.id = id;
     }
 
-    public float getAccuracy() {
-        return accuracy;
-    }
-
-    public void setAccuracy(float accuracy) {
-        this.accuracy = accuracy;
-    }
-
-    public double getLatitude() {
-        return latitude;
-    }
-
-    public void setLatitude(double latitude) {
-        this.latitude = latitude;
-    }
-
-    public double getLongitude() {
-        return longitude;
-    }
-
-    public void setLongitude(double longitude) {
-        this.longitude = longitude;
-    }
-
+    @PrimaryKey(autoGenerate = true)
+    private int id;
 
 }
