@@ -21,7 +21,9 @@ import android.app.PendingIntent;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
+import android.content.res.Configuration;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
 import android.preference.PreferenceManager;
 import android.provider.Settings;
@@ -155,6 +157,27 @@ public class MainActivity extends AppCompatActivity implements
             }
         }
 
+    }
+
+    @Override
+    public void onUserLeaveHint () {
+
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+                enterPictureInPictureMode();
+            }
+
+    }
+
+    @Override
+    public void onPictureInPictureModeChanged (boolean isInPictureInPictureMode, Configuration newConfig) {
+        if (isInPictureInPictureMode) {
+            mRemoveLocationUpdatesButton.setVisibility(View.GONE);
+            mRequestLocationUpdatesButton.setVisibility(View.GONE);
+        } else {
+           /* mRemoveLocationUpdatesButton.setVisibility(View.VISIBLE);
+            mRequestLocationUpdatesButton.setVisibility(View.VISIBLE);*/
+
+        }
     }
 
     @Override

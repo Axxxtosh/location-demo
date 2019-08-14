@@ -89,29 +89,30 @@ public class LocationUpdateService extends Service {
      */
     private static final String CHANNEL_ID = "Bounce";
 
-    public static final String ACTION_BROADCAST = PACKAGE_NAME + ".broadcast";
-
-    public static final String EXTRA_LOCATION = PACKAGE_NAME + ".location";
     private static final String EXTRA_STARTED_FROM_NOTIFICATION = PACKAGE_NAME +
             ".started_from_notification";
 
 
     private static final CpuMetricsCollector sCollector = new CpuMetricsCollector();
-    private static final float SMALLEST_DISTANCE = 1;
+
     private final CpuMetrics mInitialMetrics = sCollector.createMetrics();
     private final CpuMetrics mFinalMetrics = sCollector.createMetrics();
 
     /**
      * The desired interval for location updates. Inexact. Updates may be more or less frequent.
      */
-    private static final long UPDATE_INTERVAL_IN_MILLISECONDS =  10000;
+    private static final long UPDATE_INTERVAL_IN_MILLISECONDS =  15000;
 
     /**
      * The fastest rate for active location updates. Updates will never be more frequent
      * than this value.
      */
     private static final long FASTEST_UPDATE_INTERVAL_IN_MILLISECONDS =
-            2*30 * 1000;
+            30000;
+
+    private static final float SMALLEST_DISTANCE = 1;
+
+    /*private static final float MAX_TIME = ;*/
 
     /**
      * The identifier for the notification displayed for the foreground service.
@@ -367,7 +368,7 @@ public class LocationUpdateService extends Service {
                 .addAction(R.drawable.ic_cancel, getString(R.string.remove_location_updates),
                         servicePendingIntent)
                 .setContentText(text)
-                .setContentTitle(diff)
+                .setContentTitle(LocationUtils.getLocationTitle(this))
                 .setOngoing(true)
                 .setOnlyAlertOnce(true)
                 .setPriority(Notification.PRIORITY_HIGH)
@@ -428,10 +429,10 @@ public class LocationUpdateService extends Service {
      */
     private void createLocationRequest() {
         mLocationRequest = new LocationRequest();
-        mLocationRequest.setInterval(20000);
+        mLocationRequest.setInterval(UPDATE_INTERVAL_IN_MILLISECONDS);
        // mLocationRequest.setMaxWaitTime(100000);
-        mLocationRequest.setFastestInterval(20000);//affects batching
-        mLocationRequest.setSmallestDisplacement(10);
+        mLocationRequest.setFastestInterval(FASTEST_UPDATE_INTERVAL_IN_MILLISECONDS);//affects batching
+       // mLocationRequest.setSmallestDisplacement(SMALLEST_DISTANCE);
         //mLocationRequest.setSmallestDisplacement(SMALLEST_DISTANCE);
         mLocationRequest.setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY);
     }

@@ -12,7 +12,7 @@
 -->
 
 <resources>
-    <string name="app_name">Location Update Demo</string>
+    <string name="app_name">Location Service</string>
 
     <string name="launch_activity">Open Activityy</string>
     <string name="location_unknown">Location unknown</string>
