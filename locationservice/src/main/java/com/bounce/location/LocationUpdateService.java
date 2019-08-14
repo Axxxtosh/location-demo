@@ -25,9 +25,9 @@ import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
 import android.content.res.Configuration;
+import android.graphics.PixelFormat;
 import android.location.Location;
 import android.net.ConnectivityManager;
-import android.net.NetworkInfo;
 import android.os.AsyncTask;
 import android.os.Build;
 import android.os.Handler;
@@ -35,6 +35,12 @@ import android.os.HandlerThread;
 import android.os.IBinder;
 import android.os.Looper;
 import android.util.Log;
+import android.view.Gravity;
+import android.view.LayoutInflater;
+import android.view.MotionEvent;
+import android.view.View;
+import android.view.WindowManager;
+import android.widget.ImageView;
 
 import androidx.annotation.NonNull;
 import androidx.core.app.NotificationCompat;
@@ -154,6 +160,10 @@ public class LocationUpdateService extends Service {
     private String diff;
     private String cachedJson;
 
+    //for floating
+    private WindowManager mWindowManager;
+    private View mFloatingView;
+
 
     public LocationUpdateService() {
     }
@@ -161,107 +171,12 @@ public class LocationUpdateService extends Service {
     @Override
     public void onCreate() {
 
-
         //auto starter for chinese OEMs
         AutoStartPermissionHelper.getInstance().getAutoStartPermission(getApplicationContext());
         Log.e(TAG,"auto starter for OENs initialised");
-        mFusedLocationClient = LocationServices.getFusedLocationProviderClient(this);
-
-        mLocationCallback = new LocationCallback() {
-            @Override
-            public void onLocationResult(LocationResult locationResult) {
-                super.onLocationResult(locationResult);
-                //may be a batch
-                onNewLocation(locationResult.getLastLocation());
-                Log.e(TAG,"Batch size: "+locationResult.getLocations().size());
-
-                /* for(int i = 0; i < locationResult.getLocations().size(); i++) {
-
-                    Log.e(TAG,"Batch data: "+locationResult.getLocations().get(i).toString());
-
-
-                }*/
-                //checkNetworkforApi();
-                // create a new Gson instance
-                Gson gson = new Gson();
-                // convert your list to json
-                String jsonLocationList = gson.toJson(locationResult);
-                // print your generated json
-                Log.e(TAG,"jsonLocationList: " + jsonLocationList);
-
-                checkNetworkforApi(jsonLocationList);
-
-            }
-
-
-
-        };
-
-        LocationUtils.setTimestamp(this,000);
-        createLocationRequest();
-        getLastLocation();
-
-        HandlerThread handlerThread = new HandlerThread(TAG);
-        handlerThread.start();
-        mServiceHandler = new Handler(handlerThread.getLooper());
-        mNotificationManager = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
-
-        // Android O requires a Notification Channel.
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            CharSequence name = getString(R.string.app_name);
-            // Create the channel for the notification
-            NotificationChannel mChannel =
-                    new NotificationChannel(CHANNEL_ID, name, NotificationManager.IMPORTANCE_DEFAULT);
-
-            // Set the Notification Channel for the Notification Manager.
-            mNotificationManager.createNotificationChannel(mChannel);
-        }
-
-        locationDatabase= Room.databaseBuilder(getApplicationContext(), LocationDatabase.class, "LOCATION").build();
-
-
-
+        setLocationCallback();
+        setFloatingBubble();
     }
-
-    private void checkNetworkforApi(String jsonData) {
-
-        if(isNetworkAvailable(getApplicationContext())){
-
-                    Log.e(TAG,"checking connection : available ");
-                    //upload data from cache if available and clear the cache
-                    LocationInfo locationInfo=new LocationInfo();
-                    locationInfo.setJson(jsonData);
-
-
-
-                    callApi(jsonData+","+getCache());
-
-                }
-                else{
-
-                    Log.e(TAG,"checking connection : not available ");
-                    cacheData(jsonData);
-                }
-    }
-
-
-    private void cacheData(String locationResult) {
-
-        final LocationInfo location=new LocationInfo();
-
-        location.setJson(locationResult);
-
-        Log.e(TAG,"caching data ");
-
-        new AsyncTask<Void, Void, Void>() {
-            @Override
-            protected Void doInBackground(Void... voids) {
-                locationDatabase.daoLocation().insertLocation(location);
-                return null;
-            }
-        }.execute();
-    }
-
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
         Log.e(TAG, "Service started");
@@ -304,8 +219,223 @@ public class LocationUpdateService extends Service {
         Log.e("BatteryMetrics", mFinalMetrics.diff(mInitialMetrics).toString());
         removeLocationUpdates();
         Log.e(TAG, "In onDestroyed");
+
+        if (mFloatingView != null) mWindowManager.removeView(mFloatingView);
     }
 
+    @Override
+    public void onTaskRemoved(Intent rootIntent) {
+        super.onTaskRemoved(rootIntent);
+        Log.e(TAG, "In onTaskRemoved");
+    }
+
+    //-------------------------------------------------------------------------------------------------floating
+    /**
+     * Detect if the floating view is collapsed or expanded.
+     *
+     * @return true if the floating view is collapsed.
+     */
+    private boolean isViewCollapsed() {
+        return mFloatingView == null || mFloatingView.findViewById(R.id.collapse_view).getVisibility() == View.VISIBLE;
+    }
+
+    private void setFloatingBubble() {
+        //Inflate the floating view layout we created
+        mFloatingView = LayoutInflater.from(this).inflate(R.layout.layout_floating_widget, null);
+
+        //Add the view to the window.
+        final WindowManager.LayoutParams params = new WindowManager.LayoutParams(
+                WindowManager.LayoutParams.WRAP_CONTENT,
+                WindowManager.LayoutParams.WRAP_CONTENT,
+                WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
+                WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
+                PixelFormat.TRANSLUCENT);
+
+        //Specify the view position
+        params.gravity = Gravity.TOP | Gravity.LEFT;        //Initially view will be added to top-left corner
+        params.x = 0;
+        params.y = 100;
+
+        //Add the view to the window
+        mWindowManager = (WindowManager) getSystemService(WINDOW_SERVICE);
+        mWindowManager.addView(mFloatingView, params);
+
+        //The root element of the collapsed view layout
+        final View collapsedView = mFloatingView.findViewById(R.id.collapse_view);
+        //The root element of the expanded view layout
+        final View expandedView = mFloatingView.findViewById(R.id.expanded_container);
+
+
+        //Set the close button
+        ImageView closeButtonCollapsed = (ImageView) mFloatingView.findViewById(R.id.close_btn);
+        closeButtonCollapsed.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                //close the service and remove the from from the window
+                //here for start foreground
+                stopSelf();
+            }
+        });
+
+        //Set the view while floating view is expanded.
+        //Set the play button.
+        ImageView playButton = (ImageView) mFloatingView.findViewById(R.id.play_btn);
+        playButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                // Toast.makeText(FloatingViewService.this, "Playing the song.", Toast.LENGTH_LONG).show();
+            }
+        });
+
+        //Set the next button.
+        ImageView nextButton = (ImageView) mFloatingView.findViewById(R.id.next_btn);
+        nextButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                //Toast.makeText(FloatingViewService.this, "Playing next song.", Toast.LENGTH_LONG).show();
+            }
+        });
+
+        //Set the pause button.
+        ImageView prevButton = (ImageView) mFloatingView.findViewById(R.id.prev_btn);
+        prevButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                //  Toast.makeText(FloatingViewService.this, "Playing previous song.", Toast.LENGTH_LONG).show();
+            }
+        });
+
+        //Set the close button
+        ImageView closeButton = (ImageView) mFloatingView.findViewById(R.id.close_button);
+        closeButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                collapsedView.setVisibility(View.VISIBLE);
+                expandedView.setVisibility(View.GONE);
+            }
+        });
+
+        //Open the application on thi button click
+        ImageView openButton = (ImageView) mFloatingView.findViewById(R.id.open_button);
+        openButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                //Open the application  click.
+                /*Intent intent = new Intent(LocationUpdateService.this, MainActivity.class);
+                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                startActivity(intent);*/
+
+                //close the service and remove view from the view hierarchy
+                stopSelf();
+            }
+        });
+
+        //Drag and move floating view using user's touch action.
+        mFloatingView.findViewById(R.id.root_container).setOnTouchListener(new View.OnTouchListener() {
+            private int initialX;
+            private int initialY;
+            private float initialTouchX;
+            private float initialTouchY;
+
+            @Override
+            public boolean onTouch(View v, MotionEvent event) {
+                switch (event.getAction()) {
+                    case MotionEvent.ACTION_DOWN:
+
+                        //remember the initial position.
+                        initialX = params.x;
+                        initialY = params.y;
+
+                        //get the touch location
+                        initialTouchX = event.getRawX();
+                        initialTouchY = event.getRawY();
+                        return true;
+                    case MotionEvent.ACTION_UP:
+                        int Xdiff = (int) (event.getRawX() - initialTouchX);
+                        int Ydiff = (int) (event.getRawY() - initialTouchY);
+
+                        //The check for Xdiff <10 && YDiff< 10 because sometime elements moves a little while clicking.
+                        //So that is click event.
+                        if (Xdiff < 10 && Ydiff < 10) {
+                            if (isViewCollapsed()) {
+                                //When user clicks on the image view of the collapsed layout,
+                                //visibility of the collapsed layout will be changed to "View.GONE"
+                                //and expanded view will become visible.
+                                collapsedView.setVisibility(View.GONE);
+                                expandedView.setVisibility(View.VISIBLE);
+                            }
+                        }
+                        return true;
+                    case MotionEvent.ACTION_MOVE:
+                        //Calculate the X and Y coordinates of the view.
+                        params.x = initialX + (int) (event.getRawX() - initialTouchX);
+                        params.y = initialY + (int) (event.getRawY() - initialTouchY);
+
+                        //Update the layout with new X & Y coordinate
+                        mWindowManager.updateViewLayout(mFloatingView, params);
+                        return true;
+                }
+                return false;
+            }
+        });
+    }
+
+    //--------------------------------------------------------------------------------------------------location
+
+    private void setLocationCallback() {
+        mFusedLocationClient = LocationServices.getFusedLocationProviderClient(this);
+
+        mLocationCallback = new LocationCallback() {
+            @Override
+            public void onLocationResult(LocationResult locationResult) {
+                super.onLocationResult(locationResult);
+                //may be a batch
+                onNewLocation(locationResult.getLastLocation());
+                Log.e(TAG,"Batch size: "+locationResult.getLocations().size());
+
+                /* for(int i = 0; i < locationResult.getLocations().size(); i++) {
+
+                    Log.e(TAG,"Batch data: "+locationResult.getLocations().get(i).toString());
+
+
+                }*/
+                //checkNetworkforApi();
+                // create a new Gson instance
+                Gson gson = new Gson();
+                // convert your list to json
+                String jsonLocationList = gson.toJson(locationResult);
+                // print your generated json
+                Log.e(TAG,"jsonLocationList: " + jsonLocationList);
+
+                checkNetworkforApi(jsonLocationList);
+
+            }
+
+
+
+        };
+
+        LocationUtils.setTimestamp(this,000);
+        createLocationRequest();
+        getLastLocation();
+        HandlerThread handlerThread = new HandlerThread(TAG);
+        handlerThread.start();
+        mServiceHandler = new Handler(handlerThread.getLooper());
+        mNotificationManager = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
+
+        // Android O requires a Notification Channel.
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            CharSequence name = getString(R.string.app_name);
+            // Create the channel for the notification
+            NotificationChannel mChannel =
+                    new NotificationChannel(CHANNEL_ID, name, NotificationManager.IMPORTANCE_DEFAULT);
+
+            // Set the Notification Channel for the Notification Manager.
+            mNotificationManager.createNotificationChannel(mChannel);
+        }
+
+        locationDatabase= Room.databaseBuilder(getApplicationContext(), LocationDatabase.class, "LOCATION").build();
+    }
 
     /**
      * Makes a request for location updates. Note that in this sample we merely log the
@@ -437,11 +567,7 @@ public class LocationUpdateService extends Service {
         mLocationRequest.setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY);
     }
 
-    @Override
-    public void onTaskRemoved(Intent rootIntent) {
-        super.onTaskRemoved(rootIntent);
-        Log.e(TAG, "In onTaskRemoved");
-    }
+
 
     private String calculateDiff(long time2) {
 
@@ -455,6 +581,13 @@ public class LocationUpdateService extends Service {
 
         return "Refreshed after "+min+" minutes and "+sec+" seconds";
     }
+
+    ////---------------------------------------------------------------------------------------------location ends....
+
+
+    /**
+     * Caching block and api call
+     */
 
     private void callApi(String locList) {
         GetDataService service = RetrofitClientInstance.getRetrofitInstance().create(GetDataService.class);
@@ -477,23 +610,27 @@ public class LocationUpdateService extends Service {
         });
     }
 
-    public boolean isNetworkAvailable(Context context) {
-        ConnectivityManager connectivityManager = ((ConnectivityManager) context.getSystemService(Context.CONNECTIVITY_SERVICE));
-        return connectivityManager.getActiveNetworkInfo() != null && connectivityManager.getActiveNetworkInfo().isConnected();
-    }
+    private void checkNetworkforApi(String jsonData) {
 
-    public static boolean isConnectedToNetwork(Context context) {
-        ConnectivityManager connectivityManager =
-                (ConnectivityManager) context.getSystemService(Context.CONNECTIVITY_SERVICE);
+        if(isNetworkAvailable(getApplicationContext())){
 
-        boolean isConnected = false;
-        if (connectivityManager != null) {
-            NetworkInfo activeNetwork = connectivityManager.getActiveNetworkInfo();
-            isConnected = (activeNetwork != null) && (activeNetwork.isConnectedOrConnecting());
+            Log.e(TAG,"checking connection : available ");
+            //upload data from cache if available and clear the cache
+            LocationInfo locationInfo=new LocationInfo();
+            locationInfo.setJson(jsonData);
+
+
+
+            callApi(jsonData+","+getCache());
+
         }
+        else{
 
-        return isConnected;
+            Log.e(TAG,"checking connection : not available ");
+            cacheData(jsonData);
+        }
     }
+
 
     @SuppressLint("StaticFieldLeak")
     private void removeCache() {
@@ -537,6 +674,28 @@ public class LocationUpdateService extends Service {
 
         Log.e(TAG,"cached location data "+cachedJson);
         return cachedJson;
+    }
+
+    private void cacheData(String locationResult) {
+
+        final LocationInfo location=new LocationInfo();
+
+        location.setJson(locationResult);
+
+        Log.e(TAG,"caching data ");
+
+        new AsyncTask<Void, Void, Void>() {
+            @Override
+            protected Void doInBackground(Void... voids) {
+                locationDatabase.daoLocation().insertLocation(location);
+                return null;
+            }
+        }.execute();
+    }
+
+    public boolean isNetworkAvailable(Context context) {
+        ConnectivityManager connectivityManager = ((ConnectivityManager) context.getSystemService(Context.CONNECTIVITY_SERVICE));
+        return connectivityManager.getActiveNetworkInfo() != null && connectivityManager.getActiveNetworkInfo().isConnected();
     }
 
 

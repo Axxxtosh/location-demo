@@ -31,6 +31,7 @@ import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
@@ -102,6 +103,7 @@ public class MainActivity extends AppCompatActivity implements
 
 
     private static final CpuMetricsCollector sCollector = new CpuMetricsCollector();
+    private static final int CODE_DRAW_OVER_OTHER_APP_PERMISSION = 2084;
     private final CpuMetrics mInitialMetrics = sCollector.createMetrics();
     private final CpuMetrics mFinalMetrics = sCollector.createMetrics();
     //transition
@@ -157,6 +159,17 @@ public class MainActivity extends AppCompatActivity implements
             }
         }
 
+        //check overdraw permission
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && !Settings.canDrawOverlays(this)) {
+
+            //If the draw over permission is not available open the settings screen
+            //to grant the permission.
+            Intent intent = new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                    Uri.parse("package:" + getPackageName()));
+            startActivityForResult(intent, CODE_DRAW_OVER_OTHER_APP_PERMISSION);
+        }
+
     }
 
     @Override
@@ -177,6 +190,27 @@ public class MainActivity extends AppCompatActivity implements
            /* mRemoveLocationUpdatesButton.setVisibility(View.VISIBLE);
             mRequestLocationUpdatesButton.setVisibility(View.VISIBLE);*/
 
+        }
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        if (requestCode == CODE_DRAW_OVER_OTHER_APP_PERMISSION) {
+
+            //Check if the permission is granted or not.
+            if (resultCode == RESULT_OK) {
+                Toast.makeText(this,
+                        "Permission granted",
+                        Toast.LENGTH_SHORT).show();
+            } else { //Permission is not available
+                Toast.makeText(this,
+                        "Draw over other app permission not available. Closing the application",
+                        Toast.LENGTH_SHORT).show();
+
+                finish();
+            }
+        } else {
+            super.onActivityResult(requestCode, resultCode, data);
         }
     }
 
