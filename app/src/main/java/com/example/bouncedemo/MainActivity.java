@@ -151,6 +151,9 @@ public class MainActivity extends AppCompatActivity implements
         // Check that the user hasn't revoked permissions by going to Settings.
         if (LocationUtils.requestingLocationUpdates(this)) {
             if (!checkPermissions()) {
+
+
+
                 requestPermissions();//
             }
         }
